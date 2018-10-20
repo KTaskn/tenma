@@ -1,26 +1,26 @@
 # coding:utf-8
 import unittest
 import numpy as np
-from tenma import model
+from tenma import abilitymodel
 
 class TestTenma(unittest.TestCase):
     """
     """
 
     def test_cutoff(self):
-        actual = model.cutoff(0.1)
+        actual = abilitymodel.cutoff(0.1)
         expected = 0
         self.assertEqual(expected, actual)
 
-        actual = model.cutoff(0.49)
+        actual = abilitymodel.cutoff(0.49)
         expected = 0
         self.assertEqual(expected, actual)
 
-        actual = model.cutoff(0.5)
+        actual = abilitymodel.cutoff(0.5)
         expected = 1
         self.assertEqual(expected, actual)
 
-        actual = model.cutoff(0.8)
+        actual = abilitymodel.cutoff(0.8)
         expected = 1
         self.assertEqual(expected, actual)
 
@@ -32,12 +32,12 @@ class TestTenma(unittest.TestCase):
             [3]
         ]
         params = {
-            model.COL_MU_TEMP % 1: [-3.0, 2.0, 1.0, -2.0],
-            model.COL_SIGMA_TEMP % 1: [0.01, 0.01, 0.01, 0.01],
+            abilitymodel.COL_MU_TEMP % 1: [-3.0, 2.0, 1.0, -2.0],
+            abilitymodel.COL_SIGMA_TEMP % 1: [0.01, 0.01, 0.01, 0.01],
         }
-        tmp = model.ability(X, 1, params)
+        tmp = abilitymodel.ability(X, 1, params)
         print(tmp)
-        actual = list(map(model.cutoff, tmp))
+        actual = list(map(abilitymodel.cutoff, tmp))
         expected = [0, 1, 1, 0]
         self.assertEqual(expected, actual)
 
@@ -49,13 +49,13 @@ class TestTenma(unittest.TestCase):
             [3, 0]
         ]
         params = {
-            model.COL_MU_TEMP % 1: [-3.0, 2.0, 1.0, -2.0],
-            model.COL_SIGMA_TEMP % 1: [0.01, 0.01, 0.01, 0.01],
-            model.COL_MU_TEMP % 2: [-3.0, 5.0, 1.0, -3.0],
-            model.COL_SIGMA_TEMP % 2: [0.01, 0.01, 0.01, 0.01],
+            abilitymodel.COL_MU_TEMP % 1: [-3.0, 2.0, 1.0, -2.0],
+            abilitymodel.COL_SIGMA_TEMP % 1: [0.01, 0.01, 0.01, 0.01],
+            abilitymodel.COL_MU_TEMP % 2: [-3.0, 5.0, 1.0, -3.0],
+            abilitymodel.COL_SIGMA_TEMP % 2: [0.01, 0.01, 0.01, 0.01],
         }
-        tmp = model.ability(X, 2, params)
-        actual = list(map(model.cutoff, tmp))
+        tmp = abilitymodel.ability(X, 2, params)
+        actual = list(map(abilitymodel.cutoff, tmp))
         expected = [1, 1, 0, 0]
         self.assertEqual(expected, actual)
 
