@@ -14,6 +14,16 @@ def cutoff(x, threshold=0.5):
     else:
         return 1
 
+COL_BF_JYUNI_TEMP = "bf_jyuni_%02d"
+def x_for_ability(df, D):
+    cols = []
+    for num in range(1, D + 1):
+        a_col = COL_BF_JYUNI_TEMP % num
+        cols.append(a_col)
+        df[a_col] = df.groupby('kettonum')['kakuteijyuni'].shift(num).fillna('19').replace('00', '19')
+    
+    return df[cols].values
+
 COL_MU_TEMP = "mu_%02d"
 COL_SIGMA_TEMP = "sigma_%02d"
 """
