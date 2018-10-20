@@ -32,10 +32,10 @@ def jyokencd(x):
 
 def load():
     dbparams = "host={} user={} dbname={} port={}".format(
-            "192.168.179.9",
-            "postgres",
-            "everydb2",
-            "5432"
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
         )
     
     query = """
