@@ -22,10 +22,25 @@ def x_for_ability(df, D):
         cols.append(a_col)
         df[a_col] = df.groupby('kettonum')['kakuteijyuni'].shift(num).fillna('19').replace('00', '19')
     
-    return df[cols].values
+    return df[cols].astype(np.int32).values
 
-COL_MU_TEMP = "mu_%02d"
-COL_SIGMA_TEMP = "sigma_%02d"
+COL_BF_RANK_TEMP = "bf_rank_%02d"
+def x_bfrank(df, D):
+    cols = []
+    for num in range(1, D + 1):
+        a_col = COL_BF_RANK_TEMP % num
+        cols.append(a_col)
+        df[a_col] = df.groupby('kettonum')['racerank'].shift(num).fillna(4)
+    
+    return df[cols].astype(np.int32).values + 1
+
+def x_nowrank(df):
+    return df['racerank'].astype(np.int32).values + 1
+
+COL_P_MU = "p_mu"
+COL_P_SIGMA = "p_sigma"
+COL_RACE_P_MU = "race_p_mu"
+COL_RACE_P_SIGMA = "race_p_sigma"
 """
 ability
 個々の能力を計測する
@@ -38,18 +53,27 @@ input: dict params 係数パラメータ
     }
 output: list<float> 確率p
 """
-def ability(X, D, params):        
+def ability(X_R, X_G, X_RACE, params):        
     sigmoid = lambda  x: 1.0 / (1.0 + np.exp(-x))
-    length = len(X)
+    length = len(X_R)
     p = np.zeros(length)
-    for i in range(1, D + 1):
-        # i は 1開始
-        X_col = list(map(lambda x: x[i - 1], X))
-        col_mu = COL_MU_TEMP % i
-        col_sigma = COL_SIGMA_TEMP % i
-        mu = params[col_mu]
-        sigma = params[col_sigma]
-        before = lambda x: np.random.normal(mu[x], sigma[x])
-        p += np.array(list(map(before, X_col)))
+    for n in range(length):
+        for d in range(len(X_R[0])):
+            p[n] += np.random.normal(
+                params[COL_P_MU][
+                        X_R[n][d]
+                    ][
+                        X_G[n][d]
+                    ],
+                params[COL_P_SIGMA][
+                        X_R[n][d]
+                    ][
+                        X_G[n][d]
+                    ],
+            )
+        p[n] += np.random.normal(
+                params[COL_RACE_P_MU][X_RACE[n]],
+                params[COL_RACE_P_SIGMA][X_RACE[n]]
+            )
 
     return sigmoid(p)

@@ -25,38 +25,74 @@ class TestTenma(unittest.TestCase):
         self.assertEqual(expected, actual)
 
     def test_ability(self):
-        X = [
+        X_R = [
             [0],
             [1],
             [2],
-            [3]
+            [0]
         ]
+        X_G = [
+            [0],
+            [1],
+            [2],
+            [1],
+        ]
+        X_RACE = [0, 1, 0, 1]
         params = {
-            abilitymodel.COL_MU_TEMP % 1: [-3.0, 2.0, 1.0, -2.0],
-            abilitymodel.COL_SIGMA_TEMP % 1: [0.01, 0.01, 0.01, 0.01],
+            abilitymodel.COL_P_MU : [
+                [-3.0, -3.0, -3.0],
+                [2.0, 2.0, 2.0],
+                [1.0, 1.0, 1.0],
+                [-2.0, -2.0, -2.0]
+            ],
+            abilitymodel.COL_P_SIGMA : [
+                [0.01, 0.01, 0.01],
+                [0.01, 0.01, 0.01],
+                [0.01, 0.01, 0.01],
+                [0.01, 0.01, 0.01],
+            ],
+            abilitymodel.COL_RACE_P_MU : [-5, 5],
+            abilitymodel.COL_RACE_P_SIGMA : [0.01, 0.01]
         }
-        tmp = abilitymodel.ability(X, 1, params)
+        tmp = abilitymodel.ability(X_R, X_G, X_RACE, params)
         print(tmp)
         actual = list(map(abilitymodel.cutoff, tmp))
-        expected = [0, 1, 1, 0]
+        expected = [0, 1, 0, 1]
         self.assertEqual(expected, actual)
 
 
-        X = [
+        X_R = [
             [0, 1],
             [1, 2],
-            [2, 3],
-            [3, 0]
+            [2, 1],
+            [2, 0]
         ]
+        X_G = [
+            [0, 1],
+            [1, 2],
+            [2, 1],
+            [1, 0]
+        ]
+        X_RACE = [0, 1, 0, 0]
         params = {
-            abilitymodel.COL_MU_TEMP % 1: [-3.0, 2.0, 1.0, -2.0],
-            abilitymodel.COL_SIGMA_TEMP % 1: [0.01, 0.01, 0.01, 0.01],
-            abilitymodel.COL_MU_TEMP % 2: [-3.0, 5.0, 1.0, -3.0],
-            abilitymodel.COL_SIGMA_TEMP % 2: [0.01, 0.01, 0.01, 0.01],
+            abilitymodel.COL_P_MU : [
+                [-3.0, -3.0, -3.0],
+                [2.0, 2.0, 2.0],
+                [1.0, 1.0, 1.0],
+                [-2.0, -2.0, -2.0]
+            ],
+            abilitymodel.COL_P_SIGMA : [
+                [0.01, 0.01, 0.01],
+                [0.01, 0.01, 0.01],
+                [0.01, 0.01, 0.01],
+                [0.01, 0.01, 0.01],
+            ],
+            abilitymodel.COL_RACE_P_MU : [-5, 5],
+            abilitymodel.COL_RACE_P_SIGMA : [0.01, 0.01]
         }
-        tmp = abilitymodel.ability(X, 2, params)
+        tmp = abilitymodel.ability(X_R, X_G, X_RACE, params)
         actual = list(map(abilitymodel.cutoff, tmp))
-        expected = [1, 1, 0, 0]
+        expected = [0, 1, 0, 0]
         self.assertEqual(expected, actual)
 
 
