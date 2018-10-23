@@ -54,26 +54,30 @@ input: dict params 係数パラメータ
 output: list<float> 確率p
 """
 def ability(X_R, X_G, X_RACE, params):        
-    sigmoid = lambda  x: 1.0 / (1.0 + np.exp(-x))
+    inv_logit = lambda  x: 1.0 / (1.0 + np.exp(-x))
     length = len(X_R)
     p = np.zeros(length)
     for n in range(length):
+        p_tmp = np.zeros(100)
         for d in range(len(X_R[0])):
-            p[n] += np.random.normal(
+            p_tmp += np.random.normal(
                 params[COL_P_MU][
-                        X_R[n][d]
+                        X_R[n][d] - 1
                     ][
-                        X_G[n][d]
+                        X_G[n][d] - 1
                     ],
                 params[COL_P_SIGMA][
-                        X_R[n][d]
+                        X_R[n][d] - 1
                     ][
-                        X_G[n][d]
+                        X_G[n][d] - 1
                     ],
+                100
             )
-        p[n] += np.random.normal(
-                params[COL_RACE_P_MU][X_RACE[n]],
-                params[COL_RACE_P_SIGMA][X_RACE[n]]
+        p_tmp += np.random.normal(
+                params[COL_RACE_P_MU][X_RACE[n] - 1],
+                params[COL_RACE_P_SIGMA][X_RACE[n] - 1],
+                100
             )
+        p[n] += np.mean(p_tmp)
 
-    return sigmoid(p)
+    return inv_logit(p)
