@@ -20,7 +20,7 @@ def x_for_ability(df, D):
     for num in range(1, D + 1):
         a_col = COL_BF_JYUNI_TEMP % num
         cols.append(a_col)
-        df[a_col] = df.groupby('kettonum')['kakuteijyuni'].shift(num).fillna('19').replace('00', '19')
+        df[a_col] = df.groupby('kettonum')['kakuteijyuni'].shift(num).fillna('09').replace('00', '09')
     
     return df[cols].astype(np.int32).values
 
@@ -37,10 +37,15 @@ def x_bfrank(df, D):
 def x_nowrank(df):
     return df['racerank'].astype(np.int32).values + 1
 
-COL_P_MU = "p_mu"
-COL_P_SIGMA = "p_sigma"
-COL_RACE_P_MU = "race_p_mu"
-COL_RACE_P_SIGMA = "race_p_sigma"
+PARAM_P_MU = "p_mu"
+PARAM_P_SIGMA = "p_sigma"
+PARAM_BIAS_MU = "bias_mu"
+PARAM_BIAS_SIGMA = "bias_sigma"
+PARAM_R_A_MU = "r_a_mu"
+PARAM_R_A_SIGMA = "r_a_sigma"
+PARAM_R_BIAS_MU = "r_bias_mu"
+PARAM_R_BIAS_SIGMA = "r_bias_sigma"
+SAMPLE_N = 100
 """
 ability
 個々の能力を計測する
@@ -53,30 +58,32 @@ input: dict params 係数パラメータ
     }
 output: list<float> 確率p
 """
-def ability(X_R, X_G, X_RACE, params):        
+def ability(X_R, X_G, X_RACE, params):
     inv_logit = lambda  x: 1.0 / (1.0 + np.exp(-x))
     length = len(X_R)
     p = np.zeros(length)
     for n in range(length):
-        p_tmp = np.zeros(100)
+        p_tmp = np.zeros(SAMPLE_N)
         for d in range(len(X_R[0])):
-            p_tmp += np.random.normal(
-                params[COL_P_MU][
-                        X_R[n][d] - 1
-                    ][
-                        X_G[n][d] - 1
-                    ],
-                params[COL_P_SIGMA][
-                        X_R[n][d] - 1
-                    ][
-                        X_G[n][d] - 1
-                    ],
-                100
+            p_tmp += (1 / X_R[n][d]) * np.random.normal(
+                params[PARAM_P_MU][d],
+                params[PARAM_P_SIGMA][d],
+                SAMPLE_N
+            ) * inv_logit(
+                np.random.normal(
+                    params[PARAM_R_A_MU],
+                    params[PARAM_R_A_SIGMA],
+                    SAMPLE_N
+                ) * (X_RACE[n] - X_G[n][d]) + np.random.normal(
+                    params[PARAM_R_BIAS_MU],
+                    params[PARAM_R_BIAS_SIGMA],
+                    SAMPLE_N
+                )
             )
         p_tmp += np.random.normal(
-                params[COL_RACE_P_MU][X_RACE[n] - 1],
-                params[COL_RACE_P_SIGMA][X_RACE[n] - 1],
-                100
+                params[PARAM_BIAS_MU],
+                params[PARAM_BIAS_SIGMA],
+                SAMPLE_N
             )
         p[n] += np.mean(p_tmp)
 
