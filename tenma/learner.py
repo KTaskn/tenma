@@ -27,47 +27,47 @@ def get_dataset(df):
     return df_ret, df_ret['answer']
 
 if __name__ == "__main__":
-    # df = dataload.load()
-    # # 学習用サンプルを取得
-    # df_learn, Y = get_dataset(df)
-    # del(df)
-    # D = 4
-    # X_R = abilitymodel.x_for_ability(df_learn, D)
-    # X_G = abilitymodel.x_bfrank(df_learn, D)
-    # X_RACE = abilitymodel.x_nowrank(df_learn)
+    df = dataload.load()
+    # 学習用サンプルを取得
+    df_learn, Y = get_dataset(df)
+    del(df)
+    D = 4
+    X_R = abilitymodel.x_for_ability(df_learn, D)
+    X_G = abilitymodel.x_bfrank(df_learn, D)
+    X_RACE = abilitymodel.x_nowrank(df_learn)
 
-    # print(df_learn['answer'].value_counts())
+    print(df_learn['answer'].value_counts())
 
 
-    # data = {
-    #     "N": len(df_learn.index),
-    #     "R": 19,
-    #     "G": 10,
-    #     "X_R": X_R,
-    #     "X_G": X_G,
-    #     "X_RACE": X_RACE,
-    #     "Y": Y
-    # }
-    # pprint(data)
+    data = {
+        "N": len(df_learn.index),
+        "R": 19,
+        "G": 10,
+        "X_R": X_R,
+        "X_G": X_G,
+        "X_RACE": X_RACE,
+        "Y": Y
+    }
+    pprint(data)
 
-    # model = pystan.StanModel(file="stanmodel/abilitymodel.stan")
-    # print("compiled")
-    # fit_vb = model.vb(data=data, pars=['p', 'bias', 'r_a', 'r_bias'])
-    # ms = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
-    # params = {
-    #     abilitymodel.PARAM_P_MU : ms[['p.1', 'p.2', 'p.3', 'p.4']].mean(axis=0).tolist(),
-    #     abilitymodel.PARAM_P_SIGMA : ms[['p.1', 'p.2', 'p.3', 'p.4']].std(axis=0).tolist(),
-    #     abilitymodel.PARAM_BIAS_MU : ms['bias'].mean(axis=0).tolist(),
-    #     abilitymodel.PARAM_BIAS_SIGMA : ms['bias'].std(axis=0).tolist(),
-    #     abilitymodel.PARAM_R_A_MU : ms['r_a'].mean(axis=0).tolist(),
-    #     abilitymodel.PARAM_R_A_SIGMA : ms['r_a'].std(axis=0).tolist(),
-    #     abilitymodel.PARAM_R_BIAS_MU : ms['r_bias'].mean(axis=0).tolist(),
-    #     abilitymodel.PARAM_R_BIAS_SIGMA : ms['r_bias'].std(axis=0).tolist(),
-    # }
+    model = pystan.StanModel(file="stanmodel/abilitymodel.stan")
+    print("compiled")
+    fit_vb = model.vb(data=data, pars=['p', 'bias', 'r_a', 'r_bias'])
+    ms = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
+    params = {
+        abilitymodel.PARAM_P_MU : ms[['p.1', 'p.2', 'p.3', 'p.4']].mean(axis=0).tolist(),
+        abilitymodel.PARAM_P_SIGMA : ms[['p.1', 'p.2', 'p.3', 'p.4']].std(axis=0).tolist(),
+        abilitymodel.PARAM_BIAS_MU : ms['bias'].mean(axis=0).tolist(),
+        abilitymodel.PARAM_BIAS_SIGMA : ms['bias'].std(axis=0).tolist(),
+        abilitymodel.PARAM_R_A_MU : ms['r_a'].mean(axis=0).tolist(),
+        abilitymodel.PARAM_R_A_SIGMA : ms['r_a'].std(axis=0).tolist(),
+        abilitymodel.PARAM_R_BIAS_MU : ms['r_bias'].mean(axis=0).tolist(),
+        abilitymodel.PARAM_R_BIAS_SIGMA : ms['r_bias'].std(axis=0).tolist(),
+    }
 
-    # FILE_PATH = "model/ability_params.json"
-    # with open(FILE_PATH, 'w') as outfile:
-    #     json.dump(params, outfile)
+    FILE_PATH = "model/ability_params.json"
+    with open(FILE_PATH, 'w') as outfile:
+        json.dump(params, outfile)
 
     FILE_PATH = "model/ability_params.json"
     with open(FILE_PATH) as f:
