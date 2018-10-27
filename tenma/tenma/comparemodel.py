@@ -34,10 +34,20 @@ def _predict(df, score, params):
 
     return calc(zscore, params)
 
+def predict(df):
+    score = SCORE_MODEL.predict(df)
+
+    with open(PARAM_FILE_PATH) as f:
+        params = json.loads(f.read())
+        
+    return _predict(df, score, params)
+
 def get_learn_df(df, model):
     # scoreを利用するモデルのを流用する
     return model.get_learn_df(df)
 
+A = "a"
+B = "b"
 STAN_MODEL_PATH = "stanmodel/comparemodel.stan"
 PARAM_FILE_PATH = "model/compare_params.json"
 SCORE_MODEL = am
@@ -51,13 +61,13 @@ def learn(df):
         "X": score,
         "Y": Y
     }
-    fit_vb = model.vb(data=data, pars=['a', 'b'])
+    fit_vb = model.vb(data=data, pars=[A, B])
     ms = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
     params = {
-        "a_mu" : ms['a'].mean(axis=0).tolist(),
-        "a_sigma" : ms['a'].std(axis=0).tolist(),
-        "b_mu" : ms['b'].mean(axis=0).tolist(),
-        "b_sigma" : ms['b'].std(axis=0).tolist(),
+        A_MU : ms[A].mean(axis=0).tolist(),
+        A_SIGMA : ms[A].std(axis=0).tolist(),
+        B_MU : ms[B].mean(axis=0).tolist(),
+        B_SIGMA : ms[B].std(axis=0).tolist(),
     }
 
     with open(PARAM_FILE_PATH, 'w') as outfile:
