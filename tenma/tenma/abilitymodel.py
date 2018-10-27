@@ -38,7 +38,7 @@ def calc_bfrace(order, bf_grade, now_grade, params):
 
 BIAS_MU = "bias_mu"
 BIAS_SIGMA = "bias_sigma"
-def predict(l_order, l_bf_grade, now_grade, all_params):
+def _predict(l_order, l_bf_grade, now_grade, all_params):
     ret = 0
     for num in range(BF_N):
         params = {
@@ -64,6 +64,19 @@ def predict(l_order, l_bf_grade, now_grade, all_params):
 
     return inv_logit(ret)
 
+
+def predict(df):
+    X_R = x_for_ability(df)
+    X_G = x_bfrank(df)
+    X_RACE = x_nowrank(df)
+
+    with open(PARAM_FILE_PATH) as f:
+        params = json.loads(f.read())
+
+    score = []
+    for l_order, l_bf_grade, now_grade in zip(X_R, X_G, X_RACE):
+        score.append(_predict(l_order, l_bf_grade, now_grade, params))
+    return np.array(score)
 
 COL_BF_JYUNI_TEMP = "bf_jyuni_%02d"
 def x_for_ability(df):
@@ -111,6 +124,7 @@ P = "p"
 BIAS = "bias"
 G_A = "g_a"
 G_B = "g_b"
+STAN_MODEL_PATH = "stanmodel/abilitymodel.stan"
 PARAM_FILE_PATH = "model/ability_params.json"
 def learn(df):
     df_learn, Y = get_learn_df(df)
@@ -131,7 +145,7 @@ def learn(df):
         "Y": Y
     }
 
-    model = pystan.StanModel(file="stanmodel/abilitymodel.stan")
+    model = pystan.StanModel(file=STAN_MODEL_PATH)
     fit_vb = model.vb(data=data, pars=[P, BIAS, G_A, G_B])
     ms = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
 

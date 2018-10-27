@@ -1,11 +1,16 @@
 # coding:utf-8
 import unittest
 import os
-from tenma import abilitymodel as am
 from pprint import pprint
+import numpy as np
+from tenma import abilitymodel as am
 
 
 class TestAbilitymodel(unittest.TestCase):
+
+    def inv_logit(self, x):
+        return 1.0 / (1.0 + np.exp(-x))
+
     def test_normal(self):
         os.environ['env'] = "not test"
         expected = 1.0
@@ -49,7 +54,7 @@ class TestAbilitymodel(unittest.TestCase):
 
         now_grade = 3.0
         bf_grade = 1.0
-        expected = am.inv_logit(1.0 * (now_grade - bf_grade) + 1.0)
+        expected = self.inv_logit(1.0 * (now_grade - bf_grade) + 1.0)
         actual = am.calc_grade(bf_grade, now_grade, params)
         self.assertEqual(expected, actual)
 
@@ -62,7 +67,7 @@ class TestAbilitymodel(unittest.TestCase):
         }
         now_grade = 4.0
         bf_grade = 2.0
-        expected = am.inv_logit(2.0 * (now_grade - bf_grade) + 3.0)
+        expected = self.inv_logit(2.0 * (now_grade - bf_grade) + 3.0)
         actual = am.calc_grade(bf_grade, now_grade, params)
         self.assertEqual(expected, actual)
 
@@ -79,7 +84,7 @@ class TestAbilitymodel(unittest.TestCase):
         order = 1.0
         now_grade = 1.0
         bf_grade = 1.0
-        expected = 1.0 * (1.0 / order) * am.inv_logit(1.0 * (now_grade - bf_grade) + 1.0)
+        expected = 1.0 * (1.0 / order) * self.inv_logit(1.0 * (now_grade - bf_grade) + 1.0)
         actual = am.calc_bfrace(order, bf_grade, now_grade, params)
         self.assertEqual(expected, actual)
 
@@ -94,7 +99,7 @@ class TestAbilitymodel(unittest.TestCase):
         order = 5.0
         now_grade = 6.0
         bf_grade = 7.0
-        expected = 2.0 * (1.0 / order) * am.inv_logit(3.0 * (now_grade - bf_grade) + 4.0)
+        expected = 2.0 * (1.0 / order) * self.inv_logit(3.0 * (now_grade - bf_grade) + 4.0)
         actual = am.calc_bfrace(order, bf_grade, now_grade, params)
         self.assertEqual(expected, actual)
 
@@ -113,21 +118,18 @@ class TestAbilitymodel(unittest.TestCase):
         now_grade = 1.0
         l_order = [1.0, 1.0, 1.0, 1.0]
         l_bf_grade = [1.0, 1.0, 1.0, 1.0]
-        expected = am.inv_logit(
+        expected = self.inv_logit(
             1.0 * (1.0 / l_order[0])
-            * am.inv_logit(1.0 * (now_grade - l_bf_grade[0]) + 1.0)
+            * self.inv_logit(1.0 * (now_grade - l_bf_grade[0]) + 1.0)
         + 2.0 * (1.0 / l_order[1])
-            * am.inv_logit(1.0 * (now_grade - l_bf_grade[1]) + 1.0)
+            * self.inv_logit(1.0 * (now_grade - l_bf_grade[1]) + 1.0)
         + 3.0 * (1.0 / l_order[2])
-            * am.inv_logit(1.0 * (now_grade - l_bf_grade[2]) + 1.0)
+            * self.inv_logit(1.0 * (now_grade - l_bf_grade[2]) + 1.0)
         + 4.0 * (1.0 / l_order[3])
-            * am.inv_logit(1.0 * (now_grade - l_bf_grade[3]) + 1.0)
+            * self.inv_logit(1.0 * (now_grade - l_bf_grade[3]) + 1.0)
         + 5.0)
-        actual = am.predict(l_order, l_bf_grade, now_grade, params)
+        actual = am._predict(l_order, l_bf_grade, now_grade, params)
         self.assertEqual(expected, actual)
-
-        
-        
 
 
 if __name__ == "__main__":
