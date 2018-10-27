@@ -2,5 +2,5 @@ from tenma import dataload, abilitymodel, comparemodel
 
 if __name__ == "__main__":
     df = dataload.load()
-    # abilitymodel.learn(df)
+    abilitymodel.learn(df)
     comparemodel.learn(df)
