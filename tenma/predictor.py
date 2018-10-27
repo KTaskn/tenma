@@ -11,7 +11,7 @@ RACENUM = "11"
 
 if __name__ == "__main__":
     df = dataload.load()
-    # df['predict'] = am.predict(df)
+    df['predict'] = am.predict(df)
     df['predict_comp'] = cm.predict(df)
 
     # df[['odds', 'predict', 'predict_comp']].to_csv('result.csv')
