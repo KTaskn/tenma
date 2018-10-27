@@ -10,6 +10,7 @@ parameters {
 }
 
 model {
+    a ~ normal(1.0, 0.05);
     for (n in 1:N){
         Y[n] ~ bernoulli(inv_logit(a * X[n] + b));
     }

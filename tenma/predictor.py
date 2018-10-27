@@ -11,10 +11,14 @@ RACENUM = "11"
 
 if __name__ == "__main__":
     df = dataload.load()
+    # df['predict'] = am.predict(df)
     df['predict_comp'] = cm.predict(df)
+
+    # df[['odds', 'predict', 'predict_comp']].to_csv('result.csv')
+
     print(df.pipe(lambda df: df[
             (df['year'] == YEAR)
             & (df['monthday'] == MONTHDAY)
             & (df['jyocd'] == JYOCD)
             & (df['racenum'] == RACENUM)
-        ])[['jyocd', 'racenum', 'bamei', 'predict']].sort_values(['jyocd', 'racenum', 'predict']))
+        ])[['jyocd', 'racenum', 'bamei', 'predict', 'predict_comp']].sort_values(['jyocd', 'racenum', 'predict', 'predict_comp']))
