@@ -10,8 +10,8 @@ data {
 parameters {
     real p[4];
     real bias;
-    real r_a;
-    real r_bias;
+    real g_a;
+    real g_b;
 }
 
 model {
@@ -19,10 +19,10 @@ model {
     bias ~ normal(-4.0, 0.01);
     for (n in 1:N){
         Y[n] ~ bernoulli(inv_logit(
-            p[1] * (1.0 / X_R[n, 1]) * inv_logit(r_a * (X_RACE[n] - X_G[n, 1]) + r_bias)
-            + p[2] * (1.0 / X_R[n, 2]) * inv_logit(r_a * (X_RACE[n] - X_G[n, 2]) + r_bias)
-            + p[3] * (1.0 / X_R[n, 3]) * inv_logit(r_a * (X_RACE[n] - X_G[n, 3]) + r_bias)
-            + p[4] * (1.0 / X_R[n, 4]) * inv_logit(r_a * (X_RACE[n] - X_G[n, 4]) + r_bias)
+            p[1] * (1.0 / X_R[n, 1]) * inv_logit(g_a * (X_RACE[n] - X_G[n, 1]) + g_b)
+            + p[2] * (1.0 / X_R[n, 2]) * inv_logit(g_a * (X_RACE[n] - X_G[n, 2]) + g_b)
+            + p[3] * (1.0 / X_R[n, 3]) * inv_logit(g_a * (X_RACE[n] - X_G[n, 3]) + g_b)
+            + p[4] * (1.0 / X_R[n, 4]) * inv_logit(g_a * (X_RACE[n] - X_G[n, 4]) + g_b)
             + bias
         ));
     }
