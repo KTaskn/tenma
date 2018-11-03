@@ -1,3 +1,4 @@
+# coding:utf-8
 from tenma import dataload, abilitymodel, comparemodel
 
 if __name__ == "__main__":
