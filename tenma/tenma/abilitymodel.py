@@ -35,10 +35,14 @@ def calc_grade(bf_grade, now_grade, params):
 def calc_bfrace(order, bf_grade, now_grade, params):
     return calc_order(order, params) * calc_grade(bf_grade, now_grade, params)
 
+K_MU = "k_mu"
+K_SIGMA = "k_sigma"
+def calc_kisyu(kisyu, params):
+    return kisyu * normal(params[K_MU], params[K_SIGMA])
 
 BIAS_MU = "bias_mu"
 BIAS_SIGMA = "bias_sigma"
-def _predict(l_order, l_bf_grade, now_grade, all_params):
+def _predict(l_order, l_bf_grade, now_grade, kisyu, all_params):
     ret = 0
     for num in range(BF_N):
         params = {
@@ -57,6 +61,7 @@ def _predict(l_order, l_bf_grade, now_grade, all_params):
             now_grade,
             params
         )
+    ret += calc_kisyu(kisyu, all_params)
     ret += normal(
         all_params[BIAS_MU],
         all_params[BIAS_SIGMA]
@@ -69,13 +74,14 @@ def predict(df):
     X_R = x_for_ability(df)
     X_G = x_bfrank(df)
     X_RACE = x_nowrank(df)
+    X_KISYU = x_kisyu(df)
 
     with open(PARAM_FILE_PATH) as f:
         params = json.loads(f.read())
 
     score = []
-    for l_order, l_bf_grade, now_grade in zip(X_R, X_G, X_RACE):
-        score.append(_predict(l_order, l_bf_grade, now_grade, params))
+    for l_order, l_bf_grade, now_grade, kisyu in zip(X_R, X_G, X_RACE, X_KISYU):
+        score.append(_predict(l_order, l_bf_grade, now_grade, kisyu, params))
     return np.array(score)
 
 COL_BF_JYUNI_TEMP = "bf_jyuni_%02d"
@@ -101,6 +107,44 @@ def x_bfrank(df):
 def x_nowrank(df):
     return df['racerank'].astype(np.int32).values + 1
 
+# dic_kisyu = {
+#     "05339":"Ｃ．ルメール",
+#     "05212":"Ｍ．デムーロ",
+#     "05386":"戸崎　圭太",
+#     "01014":"福永　祐一",
+#     "01088":"川田　将雅",
+#     "01102":"北村　友一",
+#     "01126":"松山　弘平",
+#     "01075":"田辺　裕信",
+#     "00666":"武　豊",
+#     "01018":"和田　竜二",
+# }
+
+dic_kisyu = {
+    "05509": 0.34,
+    "05339": 0.24,
+    "05212": 0.24,
+    "05366": 0.23,
+    "05516": 0.20,
+    "05568": 0.18,
+    "00655": 0.17,
+    "05473": 0.16,
+    "05386": 0.15,
+    "05529": 0.15
+}
+
+def x_kisyu(df):
+    def func(x):
+        if x in dic_kisyu.keys():
+            return dic_kisyu[x]
+        else:
+            return 0.07
+    return df['kisyucode'].map(func).values
+
+def get_evaluate_df(df):
+    mask = (df['year'].astype(int) >= 2018) & (df['kakuteijyuni'].astype(int) > 0)
+    return df[mask]
+
 def get_learn_df(df):
     learn_mask = (df['year'].astype(int) < 2018)
 
@@ -124,6 +168,7 @@ P = "p"
 BIAS = "bias"
 G_A = "g_a"
 G_B = "g_b"
+K_A = "k_a"
 STAN_MODEL_PATH = "stanmodel/abilitymodel.stan"
 PARAM_FILE_PATH = "model/ability_params.json"
 def learn(df):
@@ -131,6 +176,7 @@ def learn(df):
     X_R = x_for_ability(df_learn)
     X_G = x_bfrank(df_learn)
     X_RACE = x_nowrank(df_learn)
+    X_KISYU = x_kisyu(df_learn)
 
     print(df_learn['answer'].value_counts())
 
@@ -142,11 +188,14 @@ def learn(df):
         "X_R": X_R,
         "X_G": X_G,
         "X_RACE": X_RACE,
+        "X_KISYU": X_KISYU,
         "Y": Y
     }
 
     model = pystan.StanModel(file=STAN_MODEL_PATH)
-    fit_vb = model.vb(data=data, pars=[P, BIAS, G_A, G_B])
+    fit_vb = model.vb(data=data, pars=[P, BIAS, G_A, G_B, K_A],
+            iter=5000,tol_rel_obj=0.0001,eval_elbo=100)
+    
     ms = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
 
     # pの変数リストを作成
@@ -163,7 +212,9 @@ def learn(df):
         G_A_SIGMA : ms[G_A].std(axis=0).tolist(),
         G_B_MU : ms[G_B].mean(axis=0).tolist(),
         G_B_SIGMA : ms[G_B].std(axis=0).tolist(),
+        K_MU : ms[K_A].mean(axis=0).tolist(),
+        K_SIGMA : ms[K_A].std(axis=0).tolist(),
     }
 
     with open(PARAM_FILE_PATH, 'w') as outfile:
-        json.dump(params, outfile)
+        json.dump(params, outfile, ensure_ascii=False, indent=4, sort_keys=True, separators=(',', ': '))
