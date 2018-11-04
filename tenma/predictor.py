@@ -3,7 +3,6 @@ import json
 import numpy as np
 import pandas as pd
 from tenma import dataload, abilitymodel as am, comparemodel as cm
-from tenma.rulemodel import Rule
 
 YEAR = "2018"
 MONTH = "11"
