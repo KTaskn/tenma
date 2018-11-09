@@ -41,7 +41,7 @@ def load():
     query = """
     SELECT race.year, race.monthday, race.jyocd, race.racenum, race.kyori,
     race.jyokencd5, race.gradecd,
-    uma.kettonum, uma.bamei, uma.kakuteijyuni, uma.odds
+    uma.kettonum, uma.bamei, uma.kakuteijyuni, uma.odds, uma.kisyucode
     FROM
     n_uma_race AS uma
     INNER JOIN n_race AS race
