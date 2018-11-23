@@ -6,7 +6,7 @@ from tenma import dataload, abilitymodel as am, comparemodel as cm
 
 YEAR = "2018"
 MONTH = "11"
-DAY = "04"
+DAY = "25"
 
 dic_jyo = {
     '01': '札幌',

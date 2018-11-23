@@ -19,8 +19,9 @@ def make_data():
                     if row_0['kakuteijyuni'] <= 3 and row_0['kakuteijyuni'] < row_1['kakuteijyuni']:
                         f.write("%s,%s\n" % (row_1['bamei'], row_0['bamei']))
 
-make_data()
+# make_data()
 # グラフを構築
+df = pd.read_csv('2015_2017_race.csv', dtype=str)
 G = nx.read_edgelist(
     'list.txt',
     delimiter=',',
@@ -33,8 +34,20 @@ print(nx.number_of_edges(G))
 
 # pagerank の計算
 pr = nx.pagerank(G)
-
-print(pd.Series(pr).sort_values())
+print(pd.Series(pr).reset_index())
+tmp = pd.Series(pr).reset_index()
+tmp.columns = ['bamei', 'score']
+print(pd.merge(
+    df.pipe(lambda df: df[
+        (df['year'] == '2018')
+        & (df['monthday'] == '1118')
+        & (df['jyocd'] == '08')
+        & (df['racenum'] == '11')
+        ]),
+    tmp,
+    on = ['bamei']
+).sort_values('score'))
+# print(pd.Series(pr).sort_values())
 # # 可視化
 # pos = nx.spring_layout(G)
 # plt.figure(figsize=(6, 6))
