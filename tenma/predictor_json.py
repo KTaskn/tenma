@@ -5,8 +5,7 @@ import pandas as pd
 from tenma import dataload, abilitymodel as am, comparemodel as cm
 
 YEAR = "2018"
-MONTH = "11"
-DAY = "25"
+MONTHDAY = ["1201", "1202"]
 
 dic_jyo = {
     '01': '札幌',
@@ -39,10 +38,10 @@ if __name__ == "__main__":
     df['predict'] = am.predict(df)
     df = df.pipe(lambda df: df[
         (df['year'] == '2018')
-    &   (df['monthday'] == MONTH + DAY)
+    &   (df['monthday'].map(lambda x: x in MONTHDAY))
     ])
 
-    df['ranking'] = df.groupby(['jyocd', 'racenum'])['predict'].rank(ascending=False)
+    df['ranking'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['predict'].rank(ascending=False)
 
     df[['year', 'monthday', 'jyocd', 'racenum', 'kettonum', 'ranking']].to_csv('output.csv', index=False)
     df[['kettonum', 'bamei']].to_csv('bamei.csv', index=False)

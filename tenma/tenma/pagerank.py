@@ -37,16 +37,16 @@ pr = nx.pagerank(G)
 print(pd.Series(pr).reset_index())
 tmp = pd.Series(pr).reset_index()
 tmp.columns = ['bamei', 'score']
-print(pd.merge(
+pd.merge(
     df.pipe(lambda df: df[
         (df['year'] == '2018')
-        & (df['monthday'] == '1118')
-        & (df['jyocd'] == '08')
-        & (df['racenum'] == '11')
+        & (df['monthday'] == '1125')
+        & (df['jyocd'] == '05')
+        & (df['racenum'].map(lambda x: x in ['07', '08', '09', '10', '11']))
         ]),
     tmp,
     on = ['bamei']
-).sort_values('score'))
+).sort_values(['racenum', 'score']).to_csv('20181125.csv', index=False)
 # print(pd.Series(pr).sort_values())
 # # 可視化
 # pos = nx.spring_layout(G)

@@ -40,7 +40,7 @@ def load():
     
     query = """
     SELECT race.year, race.monthday, race.jyocd, race.racenum, race.kyori,
-    race.jyokencd5, race.gradecd,
+    race.jyokencd5, race.gradecd, uma.harontimel3, uma.timediff, uma.futan,
     uma.kettonum, uma.bamei, uma.kakuteijyuni, uma.odds, uma.kisyucode
     FROM
     n_uma_race AS uma
