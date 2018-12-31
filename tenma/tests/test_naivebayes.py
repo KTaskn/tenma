@@ -1,6 +1,7 @@
 # coding:utf-8
 import unittest
 import os
+import numpy as np
 import pandas as pd
 from tenma import naivebayes as nb
 
@@ -13,11 +14,12 @@ class TestNaivebayes(unittest.TestCase):
             col_A: [1, 1, 1, 2, 2, 4]
         })
         
-        expect = 0.5
+        expect = np.log(0.5)
         A = 1
         self.assertEqual(expect, nb.P_A(df, col_A, A))
 
-        expect = 0.0
+        #expect = np.log(0.0)
+        expect = -50.0
         A = 0
         self.assertEqual(expect, nb.P_A(df, col_A, A))
 
@@ -51,13 +53,19 @@ class TestNaivebayes(unittest.TestCase):
             col_A: [1, 1, 1, 2, 5, 4]
         })
         
-        expect = 1.0
+        expect = np.log(1.0)
         B = 1
         A = 1
         self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
 
-        expect = 0.5
+        expect = np.log(0.5)
         B = 3
+        A = 2
+        self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
+
+        #expect = np.log(0.0)
+        expect = -50.0
+        B = 5
         A = 2
         self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
 
@@ -110,11 +118,12 @@ class TestNaivebayes(unittest.TestCase):
             col_A: [1, 0, 1, 1]
         })
 
-        P_B = 1 / 2
+        P_B = np.log(1 / 2)
+
         P_A = 3 / 4
         P_AB = 1 / 2
         
-        expect = P_AB * P_B / P_A
+        expect = np.log(P_AB) + P_B - np.log(P_A)
         B = 1
         A = 1
         self.assertEqual(expect, nb.P_BA(df, P_B, col_A, A, col_B, B))
