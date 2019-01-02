@@ -58,38 +58,71 @@ def NaiveBayesModel(df):
         "kisyucode"
     ]
 
-    result = []
-    df_output = df.pipe(lambda df: df[(df['year'] == '2018') & (df['monthday'].astype(int) >= 1000)]).reset_index(drop=True)
-    for idx, row in df_output[
-        l_col + ['unixtime', 'smile', 'isturf', 'jyokencd5', "monthday"]
-        ].iterrows():
-        print(row['monthday'])
-        #print(row['kyori'], row['trackcd'])
-        df_tmp = df.pipe(lambda df: df[
-            (df['unixtime'] < row['unixtime'])
-           & (df['unixtime'] > row['unixtime'] - 24 * 60 * 60 * 90)
-           & (df['smile'] == row['smile'])
-           & (df['isturf'] == row['isturf'])
-           #& (df['jyokencd5'] == row['jyokencd5'])
-        ])
-        if len(df_tmp.index) == 0:
-            df_tmp = df.pipe(lambda df: df[
-                    (df['unixtime'] < row['unixtime'])
-                & (df['smile'] == row['smile'])
-                & (df['isturf'] == row['isturf'])
-                #& (df['jyokencd5'] == row['jyokencd5'])
-                ])
+    result = [np.nan] * len(df.index)
+    df_output = df.pipe(lambda df: df[
+        (df['year'] == '2018')
+         #& (df['monthday'].astype(int) == 1000)
+         & (df['monthday'] == '1223')
+         & (df['racenum'] == '11')
+         & (df['jyocd'] == '06')
+    ]).reset_index(drop=True)
+    print(df_output)
+    for _, grp in df_output.groupby(['year', 'monthday', 'jyocd', 'racenum']):
+        for idx, row_1 in grp.iterrows():
+            for idx, row_2 in grp.iterrows():
+                for idx, row_3 in grp.iterrows():
+                    df_tmp = df.pipe(lambda df: df[
+                        (df['unixtime'] < row_1['unixtime'])
+                    & (df['unixtime'] > row_1['unixtime'] - 24 * 60 * 60 * 90)
+                    & (df['smile'] == row_1['smile'])
+                    & (df['isturf'] == row_1['isturf'])
+                    ])
+                    if len(df_tmp.index) == 0:
+                        df_tmp = df.pipe(lambda df: df[
+                                (df['unixtime'] < row_1['unixtime'])
+                            & (df['smile'] == row_1['smile'])
+                            & (df['isturf'] == row_1['isturf'])
+                            ])
 
-        a = NaiveBayes(
-            df_tmp,
-            np.log10(1 / 18),
-            l_col,
-            row.values,
-            "kakuteijyuni",
-            "01"
-        )
-        print(a)
-        result.append(a)
+                    if row_1['kettonum'] != row_2['kettonum']:
+                        if row_1['kettonum'] != row_3['kettonum']:
+                            if row_2['kettonum'] != row_3['kettonum']:
+                                p = np.log10(1 / 18.0)
+                                p = NaiveBayes(
+                                    df_tmp,
+                                    p,
+                                    l_col,
+                                    row_1[l_col].values,
+                                    "kakuteijyuni",
+                                    "01"
+                                )
+                                p = NaiveBayes(
+                                    df_tmp,
+                                    p,
+                                    l_col,
+                                    row_2[l_col].values,
+                                    "kakuteijyuni",
+                                    "02"
+                                )
+                                p = NaiveBayes(
+                                    df_tmp,
+                                    p,
+                                    l_col,
+                                    row_3[l_col].values,
+                                    "kakuteijyuni",
+                                    "03"
+                                )
+                                print(
+                                    row_1['year'],
+                                    row_1['monthday'],
+                                    row_1['jyocd'],
+                                    row_1['racenum'],
+                                    row_1['bamei'],
+                                    row_2['bamei'],
+                                    row_3['bamei'],
+                                    p
+                                )
 
-    df_output['result'] = result
+    
+
     return result, df_output
