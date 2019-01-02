@@ -67,7 +67,7 @@ def NaiveBayesModel(df):
     ]).reset_index(drop=True)
 
 
-    df_output = pd.DataFrame([], columns=['year', 'monthday', 'jyocd', 'racenum', 'bamei1', 'bamei2', 'bamei3', 'odds'])
+    df_output = pd.DataFrame([], columns=['year', 'monthday', 'jyocd', 'racenum', 'bamei1', 'bamei2', 'odds'])
     for _, grp in df_row.groupby(['year', 'monthday', 'jyocd', 'racenum']):
         dic_p = {
             "01": {},
@@ -102,10 +102,7 @@ def NaiveBayesModel(df):
         l_tmp = []
         for idx, row_1 in grp.iterrows():
             for idx, row_2 in grp.iterrows():
-                for idx, row_3 in grp.iterrows():
                     if row_1['bamei'] != row_2['bamei']:
-                        if row_1['bamei'] != row_3['bamei']:
-                            if row_2['bamei'] != row_3['bamei']:
                                 l_tmp.append([
                                     row_1['year'],
                                     row_1['monthday'],
@@ -113,12 +110,10 @@ def NaiveBayesModel(df):
                                     row_1['racenum'],
                                     row_1['bamei'],
                                     row_2['bamei'],
-                                    row_3['bamei'],
                                     dic_p["01"][row_1['bamei']]
                                         + dic_p["02"][row_2['bamei']]
-                                        + dic_p["03"][row_3['bamei']]
                                 ])
-        df_tmp = pd.DataFrame(l_tmp, columns=['year', 'monthday', 'jyocd', 'racenum', 'bamei1', 'bamei2', 'bamei3', 'odds'])
+        df_tmp = pd.DataFrame(l_tmp, columns=['year', 'monthday', 'jyocd', 'racenum', 'bamei1', 'bamei2', 'odds'])
         df_tmp['odds'] = df_tmp['odds'].map(lambda x: 10 ** x)
         df_tmp['odds'] = df_tmp['odds'] / df_tmp['odds'].sum()
         df_tmp['odds'] = 1.0 / df_tmp['odds']
