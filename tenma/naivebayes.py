@@ -66,7 +66,9 @@ if __name__ == "__main__":
     df['kakuteijyuni_bf2'] = df.groupby('kettonum')['kakuteijyuni'].shift(2).fillna(-1)
     df['kakuteijyuni_bf3'] = df.groupby('kettonum')['kakuteijyuni'].shift(3).fillna(-1)
     df['kakuteijyuni_bf4'] = df.groupby('kettonum')['kakuteijyuni'].shift(4).fillna(-1)
-    result, df_output = nb.NaiveBayesModel(df)
-    #df['result'] = result
+    result, df_output = nb.NaiveBayesModelTan(df)
 
-    df_output.to_csv('output.csv', index=False)
+    df_output.to_csv('output_tan.csv', index=False)
+
+    result, df_output = nb.NaiveBayesModelUmaTan(df)
+    df_output.to_csv('output_umatan.csv', index=False)

@@ -49,7 +49,7 @@ def NaiveBayes(df, P_B, l_col_A, l_A, col_B, B):
         p_b = P_BA(df, p_b, col_A, A, col_B, B)
     return p_b
 
-def NaiveBayesModel(df):
+def NaiveBayesModelUmaTan(df):
     l_col = [
         "kakuteijyuni_bf1",
         "kakuteijyuni_bf2",
@@ -67,7 +67,7 @@ def NaiveBayesModel(df):
     ]).reset_index(drop=True)
 
 
-    df_output = pd.DataFrame([], columns=['year', 'monthday', 'jyocd', 'racenum', 'bamei1', 'bamei2', 'odds'])
+    df_output = pd.DataFrame([], columns=['year', 'monthday', 'jyocd', 'racenum', 'kettonum1', 'kettonum2', 'odds'])
     for _, grp in df_row.groupby(['year', 'monthday', 'jyocd', 'racenum']):
         dic_p = {
             "01": {},
@@ -90,7 +90,7 @@ def NaiveBayesModel(df):
 
             for jyuni in dic_p.keys():
                 p = np.log10(1 / 18.0)
-                dic_p[jyuni][row_1['bamei']] = NaiveBayes(
+                dic_p[jyuni][row_1['kettonum']] = NaiveBayes(
                     df_tmp,
                     p,
                     l_col,
@@ -102,21 +102,90 @@ def NaiveBayesModel(df):
         l_tmp = []
         for idx, row_1 in grp.iterrows():
             for idx, row_2 in grp.iterrows():
-                    if row_1['bamei'] != row_2['bamei']:
+                    if row_1['kettonum'] != row_2['kettonum']:
                                 l_tmp.append([
                                     row_1['year'],
                                     row_1['monthday'],
                                     row_1['jyocd'],
                                     row_1['racenum'],
-                                    row_1['bamei'],
-                                    row_2['bamei'],
-                                    dic_p["01"][row_1['bamei']]
-                                        + dic_p["02"][row_2['bamei']]
+                                    row_1['kettonum'],
+                                    row_2['kettonum'],
+                                    dic_p["01"][row_1['kettonum']]
+                                        + dic_p["02"][row_2['kettonum']]
                                 ])
-        df_tmp = pd.DataFrame(l_tmp, columns=['year', 'monthday', 'jyocd', 'racenum', 'bamei1', 'bamei2', 'odds'])
+        df_tmp = pd.DataFrame(l_tmp, columns=['year', 'monthday', 'jyocd', 'racenum', 'kettonum1', 'kettonum2', 'odds'])
         df_tmp['odds'] = df_tmp['odds'].map(lambda x: 10 ** x)
         df_tmp['odds'] = df_tmp['odds'] / df_tmp['odds'].sum()
-        df_tmp['odds'] = 1.0 / df_tmp['odds']
+        df_tmp['odds'] = (1.0 / df_tmp['odds']).round(1)
+        df_output = pd.concat([
+            df_output,
+            df_tmp
+        ], ignore_index=True)
+
+    return result, df_output.sort_values(['year', 'monthday', 'jyocd', 'racenum', 'odds'])
+
+def NaiveBayesModelTan(df):
+    l_col = [
+        "kakuteijyuni_bf1",
+        "kakuteijyuni_bf2",
+        "kakuteijyuni_bf3",
+        "kakuteijyuni_bf4",
+        "ketto3infohansyokunum1",
+        "kisyucode"
+    ]
+
+    result = [np.nan] * len(df.index)
+    df_row = df.pipe(lambda df: df[
+        (df['year'] == '2018')
+         #& (df['monthday'].astype(int) == 1000)
+         & (df['monthday'] == '1223')
+    ]).reset_index(drop=True)
+
+
+    df_output = pd.DataFrame([], columns=['year', 'monthday', 'jyocd', 'racenum', 'kettonum', 'odds'])
+    for _, grp in df_row.groupby(['year', 'monthday', 'jyocd', 'racenum']):
+        dic_p = {
+            "01": {},
+            "02": {},
+            "03": {},
+        }
+        for idx, row_1 in grp.iterrows():
+            df_tmp = df.pipe(lambda df: df[
+                (df['unixtime'] < row_1['unixtime'])
+            & (df['unixtime'] > row_1['unixtime'] - 24 * 60 * 60 * 90)
+            & (df['smile'] == row_1['smile'])
+            & (df['isturf'] == row_1['isturf'])
+            ])
+            if len(df_tmp.index) == 0:
+                df_tmp = df.pipe(lambda df: df[
+                        (df['unixtime'] < row_1['unixtime'])
+                    & (df['smile'] == row_1['smile'])
+                    & (df['isturf'] == row_1['isturf'])
+                    ])
+
+            for jyuni in dic_p.keys():
+                p = np.log10(1 / 18.0)
+                dic_p[jyuni][row_1['kettonum']] = NaiveBayes(
+                    df_tmp,
+                    p,
+                    l_col,
+                    row_1[l_col].values,
+                    "kakuteijyuni",
+                    jyuni
+                )
+    
+        l_tmp = []
+        for idx, row_1 in grp.iterrows():
+                l_tmp.append([
+                    row_1['year'],
+                    row_1['monthday'],
+                    row_1['jyocd'],
+                    row_1['racenum'],
+                    row_1['kettonum'],
+                    dic_p["01"][row_1['kettonum']]
+                ])
+        df_tmp = pd.DataFrame(l_tmp, columns=['year', 'monthday', 'jyocd', 'racenum', 'kettonum', 'odds'])
+        df_tmp['odds'] = df_tmp['odds'].rank(ascending=False)
         df_output = pd.concat([
             df_output,
             df_tmp
