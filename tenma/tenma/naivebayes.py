@@ -1,6 +1,7 @@
 # coding:utf-8
 import numpy as np
 from tenma import dataload
+from datetime import datetime
 
 # P(A)
 def P_A(df, col_A, A):
@@ -13,9 +14,10 @@ def P_A(df, col_A, A):
     numerator = (df[col_A] == A).astype(int).sum()
 
     if numerator <= 0 :
-        return -50.0
+        return np.log10(1.0 / (len(df[col_A].index) + len(df.index)))
+        #return -50.0
     else:
-        return np.log(numerator / len(df[col_A].index))
+        return np.log10(numerator / len(df[col_A].index))
 
 # P(A|B)
 def P_AB(df, col_A, A, col_B, B):
@@ -31,9 +33,10 @@ def P_AB(df, col_A, A, col_B, B):
     mask = (df[col_B] == B)
     numerator = (df[mask][col_A] == A).astype(int).sum()
     if numerator <= 0.0: 
-        return -50.0
+        return np.log10(1.0 / (mask.astype(int).sum() + len(df.index)))
+        #return -50.0
     else:
-        return np.log(numerator / mask.astype(int).sum())
+        return np.log10(numerator / mask.astype(int).sum())
 
 # P_BA
 def P_BA(df, P_B, col_A, A, col_B, B):
@@ -56,10 +59,30 @@ def NaiveBayesModel(df):
     ]
 
     result = []
-    for idx, row in df[l_col].iterrows():
+    df_output = df.pipe(lambda df: df[(df['year'] == '2018') & (df['monthday'].astype(int) >= 1000)]).reset_index(drop=True)
+    for idx, row in df_output[
+        l_col + ['unixtime', 'smile', 'isturf', 'jyokencd5', "monthday"]
+        ].iterrows():
+        print(row['monthday'])
+        #print(row['kyori'], row['trackcd'])
+        df_tmp = df.pipe(lambda df: df[
+            (df['unixtime'] < row['unixtime'])
+           & (df['unixtime'] > row['unixtime'] - 24 * 60 * 60 * 90)
+           & (df['smile'] == row['smile'])
+           & (df['isturf'] == row['isturf'])
+           #& (df['jyokencd5'] == row['jyokencd5'])
+        ])
+        if len(df_tmp.index) == 0:
+            df_tmp = df.pipe(lambda df: df[
+                    (df['unixtime'] < row['unixtime'])
+                & (df['smile'] == row['smile'])
+                & (df['isturf'] == row['isturf'])
+                #& (df['jyokencd5'] == row['jyokencd5'])
+                ])
+
         a = NaiveBayes(
-            df,
-            np.log(1 / 18),
+            df_tmp,
+            np.log10(1 / 18),
             l_col,
             row.values,
             "kakuteijyuni",
@@ -68,4 +91,5 @@ def NaiveBayesModel(df):
         print(a)
         result.append(a)
 
-    return result
+    df_output['result'] = result
+    return result, df_output

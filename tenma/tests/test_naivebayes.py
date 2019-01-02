@@ -14,12 +14,11 @@ class TestNaivebayes(unittest.TestCase):
             col_A: [1, 1, 1, 2, 2, 4]
         })
         
-        expect = np.log(0.5)
+        expect = np.log10(0.5)
         A = 1
         self.assertEqual(expect, nb.P_A(df, col_A, A))
 
-        #expect = np.log(0.0)
-        expect = -50.0
+        expect = np.log10(1 / 12)
         A = 0
         self.assertEqual(expect, nb.P_A(df, col_A, A))
 
@@ -53,18 +52,17 @@ class TestNaivebayes(unittest.TestCase):
             col_A: [1, 1, 1, 2, 5, 4]
         })
         
-        expect = np.log(1.0)
+        expect = np.log10(1.0)
         B = 1
         A = 1
         self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
 
-        expect = np.log(0.5)
+        expect = np.log10(0.5)
         B = 3
         A = 2
         self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
 
-        #expect = np.log(0.0)
-        expect = -50.0
+        expect = np.log10(1 / (6))
         B = 5
         A = 2
         self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
@@ -118,12 +116,12 @@ class TestNaivebayes(unittest.TestCase):
             col_A: [1, 0, 1, 1]
         })
 
-        P_B = np.log(1 / 2)
+        P_B = np.log10(1 / 2)
 
         P_A = 3 / 4
         P_AB = 1 / 2
         
-        expect = np.log(P_AB) + P_B - np.log(P_A)
+        expect = np.log10(P_AB) + P_B - np.log10(P_A)
         B = 1
         A = 1
         self.assertEqual(expect, nb.P_BA(df, P_B, col_A, A, col_B, B))
