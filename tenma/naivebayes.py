@@ -1,4 +1,5 @@
 # coding:utf-8
+import sys
 import pandas as pd
 from datetime import datetime
 from tenma import dataload
@@ -56,6 +57,9 @@ def get_track(x):
 if __name__ == "__main__":
     df = dataload.load()
 
+    year = sys.argv[1]
+    monthday = sys.argv[2]
+
     def to_unixtime(x):
         return int(datetime.strptime(x, '%Y%m%d').timestamp())
 
@@ -76,7 +80,47 @@ if __name__ == "__main__":
     df['kakuteijyuni_bf3'] = df.groupby('kettonum')['kakuteijyuni'].shift(3).fillna(-1)
     df['kakuteijyuni_bf4'] = df.groupby('kettonum')['kakuteijyuni'].shift(4).fillna(-1)
 
-    mask = (df['year'] == '2018') & (df['monthday'] == '1228') & (df['jyocd'] == '06') & (df['racenum'] == '11')
-    df_output = nb.NaiveBayesModel(df, df[mask].reset_index(), l_col, 2)
+    mask = (df['year'] == year) & (df['monthday'] == monthday)
+    df_output = nb.NaiveBayesModel(df, df[mask].reset_index(), l_col, 1)
+    df_output['predict'] = df_output.groupby(['year', 'monthday', 'jyocd', 'racenum'])['odds'].rank(ascending=True)
 
-    df_output.sort_values(["year", 'monthday', 'jyocd', 'racenum', 'odds']).to_csv('output_tan.csv', index=False)
+    # インサート文で出力
+    print('INSERT INTO "public"."t_predict"("year","monthday","jyocd","racenum","kettonum","predict") VALUES')
+    for idx, row in df_output.iterrows():
+        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',%d)" % (
+            int(row['year']),
+            int(row['monthday']),
+            int(row['jyocd']),
+            int(row['racenum']),
+            row['kettonum_1'],
+            int(row['predict'])
+        )
+        if idx == len(df_output.index) - 1:
+            text += ";"
+        else:
+            text += ","
+        print(text)
+
+    df_output = nb.NaiveBayesModel(df, df[mask].reset_index(), l_col, 2)
+    # インサート文で出力
+    print('INSERT INTO "public"."t_umatan"("year","monthday","jyocd","racenum","kettonum_1chaku","kettonum_2chaku","odds") VALUES')
+    for idx, row in df_output.iterrows():
+        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',E'%s',%.1f)" % (
+            int(row['year']),
+            int(row['monthday']),
+            int(row['jyocd']),
+            int(row['racenum']),
+            row['kettonum_1'],
+            row['kettonum_2'],
+            float(row['odds'])
+        )
+        if idx == len(df_output.index) - 1:
+            text += ";"
+        else:
+            text += ","
+        print(text)
+    
+    for idx, row in df[mask].iterrows():
+        text = 'INSERT INTO "public"."t_name" ("kettonum","bamei")'
+        text += 'SELECT E\'%s\', E\'%s\' WHERE NOT EXISTS (SELECT "kettonum" FROM "public"."t_name" WHERE "kettonum" = E\'%s\');'
+        print(text % (row['kettonum'], row['bamei'], row['kettonum']))
