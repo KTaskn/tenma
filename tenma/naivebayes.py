@@ -59,6 +59,15 @@ if __name__ == "__main__":
     def to_unixtime(x):
         return int(datetime.strptime(x, '%Y%m%d').timestamp())
 
+    l_col = [
+        "kakuteijyuni_bf1",
+        "kakuteijyuni_bf2",
+        "kakuteijyuni_bf3",
+        "kakuteijyuni_bf4",
+        "ketto3infohansyokunum1",
+        "kisyucode"
+    ]
+
     df['unixtime'] = (df['year'] + df['monthday']).map(to_unixtime)
     df['smile'] = df['kyori'].astype(int).map(smile)
     df['isturf'] = df['trackcd'].map(get_track)
@@ -66,9 +75,8 @@ if __name__ == "__main__":
     df['kakuteijyuni_bf2'] = df.groupby('kettonum')['kakuteijyuni'].shift(2).fillna(-1)
     df['kakuteijyuni_bf3'] = df.groupby('kettonum')['kakuteijyuni'].shift(3).fillna(-1)
     df['kakuteijyuni_bf4'] = df.groupby('kettonum')['kakuteijyuni'].shift(4).fillna(-1)
-    result, df_output = nb.NaiveBayesModelTan(df)
 
-    df_output.to_csv('output_tan.csv', index=False)
+    mask = (df['year'] == '2018') & (df['monthday'] == '1228') & (df['jyocd'] == '06') & (df['racenum'] == '11')
+    df_output = nb.NaiveBayesModel(df, df[mask].reset_index(), l_col, 2)
 
-    result, df_output = nb.NaiveBayesModelUmaTan(df)
-    df_output.to_csv('output_umatan.csv', index=False)
+    df_output.sort_values(["year", 'monthday', 'jyocd', 'racenum', 'odds']).to_csv('output_tan.csv', index=False)
