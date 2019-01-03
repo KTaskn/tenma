@@ -39,9 +39,10 @@ def load():
         )
     
     query = """
-    SELECT race.year, race.monthday, race.jyocd, race.racenum, race.kyori,
+    SELECT race.year, race.monthday, race.jyocd, race.racenum, race.kyori, race.trackcd,
     race.jyokencd5, race.gradecd, uma.harontimel3, uma.timediff, uma.futan,
-    uma.kettonum, uma.bamei, uma.kakuteijyuni, uma.odds, uma.kisyucode
+    uma.kettonum, uma.bamei, uma.kakuteijyuni, uma.odds, uma.kisyucode,
+    ketto.Ketto3InfoHansyokuNum1, ketto.Ketto3InfoHansyokuNum5
     FROM
     n_uma_race AS uma
     INNER JOIN n_race AS race
@@ -49,6 +50,8 @@ def load():
     AND uma.monthday = race.monthday
     AND uma.jyocd = race.jyocd
     AND uma.racenum = race.racenum
+    INNER JOIN n_uma AS ketto
+    ON uma.kettonum = ketto.kettonum
     WHERE uma.year::int > 2015
     AND race.jyocd in ('01', '02', '03', '04', '05', '06', '07', '08', '09', '10');
     """
