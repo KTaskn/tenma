@@ -91,9 +91,6 @@ def NaiveBayesModel(df, df_target, l_col, NUM):
         # 確率のリストを作成する
         dic_p = make_dic_p(df, df_grp, l_col, NUM)
 
-        from pprint import pprint
-        pprint(dic_p)
-    
         # 中身が重複しているやつは削除
         func = lambda input: len(input) == len(list(set(input)))
         l_tpl = list(filter(func, list(permutations(df_grp['kettonum'].values, NUM))))
