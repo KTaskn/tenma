@@ -5,50 +5,99 @@ import pandas as pd
 from tenma import dataload
 from datetime import datetime
 
-# P(A)
-def P_A(df, col_A, A):
-    if(col_A not in df.columns):
-        raise KeyError("%sはデータフレームに存在しない列です" % col_A)
+class NaiveBayesSummary():
+    def __init__(self):
+        self.__probability = np.nan
+        self.__summary = []
 
-    if(len(df.index) == 0):
-        raise RuntimeError("データフレームにデータが存在しません")
+    def set_probability(self, p):
+        self.__probability = p
+    
+    def set_factor(self, name, p):
+        self.__summary.append((name, p))
 
-    numerator = (df[col_A] == A).astype(int).sum()
+    def get_probability(self):
+        return self.__probability
 
-    if numerator <= 0 :
-        return np.log10(1.0 / (len(df[col_A].index) + len(df.index)))
-        #return -50.0
-    else:
-        return np.log10(numerator / len(df[col_A].index))
+    def get_factor(self, name=None):
+        if name is None:
+            return self.__summary
+        else:
+            return dict(self.__summary)[name]
 
-# P(A|B)
-def P_AB(df, col_A, A, col_B, B):
-    if(len(df.index) == 0):
-        raise RuntimeError("データフレームにデータが存在しません")
+    def get_bad_factor(self, num=0):
+        return sorted(self.__summary, key=lambda x: x[1])[num]
 
-    if(col_A not in df.columns):
-        raise KeyError("%sはデータフレームに存在しない列です" % col_A)
+    
+    def get_good_factor(self, num=0):
+        return sorted(self.__summary, key=lambda x: x[1], reverse=True)[num]
 
-    if(col_B not in df.columns):
-        raise KeyError("%sはデータフレームに存在しない列です" % col_B)
 
-    mask = (df[col_B] == B)
-    numerator = (df[mask][col_A] == A).astype(int).sum()
-    if numerator <= 0.0: 
-        return np.log10(1.0 / (mask.astype(int).sum() + len(df.index)))
-        #return -50.0
-    else:
-        return np.log10(numerator / mask.astype(int).sum())
+class NaiveBayes():
+    def __init__(self, df, P_B, l_name_A, l_jyoken_A, name_B, jyoken_B):
+        self.__summary = NaiveBayesSummary()
 
-# P_BA
-def P_BA(df, P_B, col_A, A, col_B, B):
-    return P_AB(df, col_A, A, col_B, B) + P_B - P_A(df, col_A, A)
+        self.df = df
+        self.p_b = P_B
+        self.l_name_A = l_name_A
+        self.l_jyoken_A = l_jyoken_A
+        self.name_B = name_B
+        self.jyoken_B = jyoken_B
 
-def NaiveBayes(df, P_B, l_col_A, l_A, col_B, B):
-    p_b = P_B
-    for col_A, A in zip(l_col_A, l_A):
-        p_b = P_BA(df, p_b, col_A, A, col_B, B)
-    return p_b
+    def predict(self):
+        self.__summary = NaiveBayesSummary()
+        _df = self.df
+        _p_b = self.p_b
+        _name_B = self.name_B
+        _jyoken_B = self.jyoken_B
+        for name_A, jyoken_A in zip(self.l_name_A, self.l_jyoken_A):
+            _p_b = self.__P_BA(_df, _p_b, name_A, jyoken_A, _name_B, _jyoken_B)
+        self.__summary.set_probability(_p_b)
+    
+    def get_summary(self):
+        return self.__summary
+
+    # P(A)
+    def __P_A(self, df, col_A, A):
+        if(col_A not in df.columns):
+            raise KeyError("%sはデータフレームに存在しない列です" % col_A)
+
+        if(len(df.index) == 0):
+            raise RuntimeError("データフレームにデータが存在しません")
+
+        numerator = (df[col_A] == A).astype(int).sum()
+
+        if numerator <= 0 :
+            return np.log10(1.0 / (len(df[col_A].index) + len(df.index)))
+        else:
+            return np.log10(numerator / len(df[col_A].index))
+
+    # P(A|B)
+    def __P_AB(self, df, col_A, A, col_B, B):
+        if(len(df.index) == 0):
+            raise RuntimeError("データフレームにデータが存在しません")
+
+        if(col_A not in df.columns):
+            raise KeyError("%sはデータフレームに存在しない列です" % col_A)
+
+        if(col_B not in df.columns):
+            raise KeyError("%sはデータフレームに存在しない列です" % col_B)
+
+        mask = (df[col_B] == B)
+        numerator = (df[mask][col_A] == A).astype(int).sum()
+        if numerator <= 0.0:
+            result_p = np.log10(1.0 / (mask.astype(int).sum() + len(df.index)))
+        else:
+            result_p = np.log10(numerator / mask.astype(int).sum())
+
+        return result_p
+
+    # P_BA
+    def __P_BA(self, df, P_B, col_A, A, col_B, B):
+        P_AB = self.__P_AB(df, col_A, A, col_B, B)
+        P_A = self.__P_A(df, col_A, A)
+        self.__summary.set_factor(col_A, P_AB - P_A)
+        return P_AB + P_B - P_A
 
 def make_dic_p(df_all, df_grp, l_col, NUM):
     dic_p = dict(zip(map(lambda x: "%02d" % x, range(1, NUM + 1)), [{}] * NUM))
@@ -66,7 +115,7 @@ def make_dic_p(df_all, df_grp, l_col, NUM):
             ])
 
             p = np.log10(1 / 18.0)
-            dic_tmp[row['kettonum']] = NaiveBayes(
+            nb = NaiveBayes(
                 df_jyoken,
                 p,
                 l_col,
@@ -74,16 +123,18 @@ def make_dic_p(df_all, df_grp, l_col, NUM):
                 "kakuteijyuni",
                 jyuni
             )
+            nb.predict()
+            dic_tmp[row['kettonum']] = nb.get_summary()
         dic_p[jyuni] = dic_tmp
     return dic_p
 
 def get_p_rentan(tpl, dic):
     p = 0.0
     for idx, id in enumerate(tpl):
-        p += dic["%02d" % (idx + 1)][id]
+        p += dic["%02d" % (idx + 1)][id].get_probability()
     return p
 
-def NaiveBayesModel(df, df_target, l_col, NUM):
+def get_NaiveBayesProbability(df, df_target, l_col, NUM):
     df_output = pd.DataFrame([])
     grp_col = ['year', 'monthday', 'jyocd', 'racenum']
     for _, df_grp in df_target.groupby(grp_col):
@@ -112,5 +163,31 @@ def NaiveBayesModel(df, df_target, l_col, NUM):
             df_output,
             df_tmp
         ], ignore_index=True)
+
+    return df_output
+
+def get_NaiveBayesFactors(df, df_target, l_col, NUM):
+    df_output = pd.DataFrame([])
+    grp_col = ['year', 'monthday', 'jyocd', 'racenum']
+    for _, df_grp in df_target.groupby(grp_col):
+
+        # 確率のリストを作成する
+        dic_p = make_dic_p(df, df_grp, l_col, NUM)
+
+        for num in range(len(l_col)):
+            df_tmp = pd.DataFrame(df_grp['kettonum'], columns=["kettonum"])
+            df_tmp['factor'] = list(map(lambda row: dic_p["01"][row].get_good_factor(num)[0], df_grp['kettonum']))
+            df_tmp['score'] = list(map(lambda row: dic_p["01"][row].get_good_factor(num)[1], df_grp['kettonum']))
+            
+            # レース番号などを追加
+            for idx, col in enumerate(grp_col):
+                df_tmp[col] = _[idx]
+                
+            # 他のレースとのデータフレームと結合する
+            df_output = pd.concat([
+                df_output,
+                df_tmp
+            ], ignore_index=True)
+
 
     return df_output

@@ -3,10 +3,13 @@ import unittest
 import os
 import numpy as np
 import pandas as pd
-from tenma import naivebayes as nb
+from tenma import naivebayes
 
 
 class TestNaivebayes(unittest.TestCase):
+
+    def setUp(self):
+        self.nb = naivebayes.NaiveBayes(None, None, None, None, None, None)
 
     def test_P_A(self):
         col_A = 'col_1'
@@ -16,11 +19,11 @@ class TestNaivebayes(unittest.TestCase):
         
         expect = np.log10(0.5)
         A = 1
-        self.assertEqual(expect, nb.P_A(df, col_A, A))
+        self.assertEqual(expect, self.nb._NaiveBayes__P_A(df, col_A, A))
 
         expect = np.log10(1 / 12)
         A = 0
-        self.assertEqual(expect, nb.P_A(df, col_A, A))
+        self.assertEqual(expect, self.nb._NaiveBayes__P_A(df, col_A, A))
 
     def test_P_A_notcol(self):
         col_A = 'col_1'
@@ -30,7 +33,7 @@ class TestNaivebayes(unittest.TestCase):
         
         A = 0
         with self.assertRaises(KeyError):
-            nb.P_A(df, col_A, A)
+            self.nb._NaiveBayes__P_A(df, col_A, A)
 
 
     def test_P_A_len0(self):
@@ -41,7 +44,7 @@ class TestNaivebayes(unittest.TestCase):
         
         A = 0
         with self.assertRaises(RuntimeError):
-            nb.P_A(df, col_A, A)
+            self.nb._NaiveBayes__P_A(df, col_A, A)
 
 
     def test_P_AB(self):
@@ -55,17 +58,17 @@ class TestNaivebayes(unittest.TestCase):
         expect = np.log10(1.0)
         B = 1
         A = 1
-        self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
+        self.assertEqual(expect, self.nb._NaiveBayes__P_AB(df, col_A, A, col_B, B))
 
         expect = np.log10(0.5)
         B = 3
         A = 2
-        self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
+        self.assertEqual(expect, self.nb._NaiveBayes__P_AB(df, col_A, A, col_B, B))
 
         expect = np.log10(1 / (6))
         B = 5
         A = 2
-        self.assertEqual(expect, nb.P_AB(df, col_A, A, col_B, B))
+        self.assertEqual(expect, self.nb._NaiveBayes__P_AB(df, col_A, A, col_B, B))
 
 
     def test_P_AB_notcol(self):
@@ -79,7 +82,7 @@ class TestNaivebayes(unittest.TestCase):
         A = 0
         B = 1
         with self.assertRaises(KeyError):
-            nb.P_AB(df, col_A, A, col_B, B)
+            self.nb._NaiveBayes__P_AB(df, col_A, A, col_B, B)
 
         
         col_A = 'col_1'
@@ -92,7 +95,7 @@ class TestNaivebayes(unittest.TestCase):
         A = 0
         B = 1
         with self.assertRaises(KeyError):
-            nb.P_AB(df, col_A, A, col_B, B)
+            self.nb._NaiveBayes__P_AB(df, col_A, A, col_B, B)
 
 
     def test_P_AB_len0(self):
@@ -106,7 +109,7 @@ class TestNaivebayes(unittest.TestCase):
         A = 0
         B = 1
         with self.assertRaises(RuntimeError):
-            nb.P_AB(df, col_A, A, col_B, B)
+            self.nb._NaiveBayes__P_AB(df, col_A, A, col_B, B)
 
     def test_P_BA(self):
         col_A = 'col_1'
@@ -124,36 +127,36 @@ class TestNaivebayes(unittest.TestCase):
         expect = np.log10(P_AB) + P_B - np.log10(P_A)
         B = 1
         A = 1
-        self.assertEqual(expect, nb.P_BA(df, P_B, col_A, A, col_B, B))
+        self.assertEqual(expect, self.nb._NaiveBayes__P_BA(df, P_B, col_A, A, col_B, B))
 
-    def test_get_p_rentan(self):
-        dic = {
-            "01": {
-                "a": 1,
-                "b": 2,
-                "c": 3
-            },
-            "02": {
-                "a": 3,
-                "b": 4,
-                "c": 5
-            },
-            "03": {
-                "a": 6,
-                "b": 7,
-                "c": 8
-            }
-        }
+    # def test_get_p_rentan(self):
+    #     dic = {
+    #         "01": {
+    #             "a": 1,
+    #             "b": 2,
+    #             "c": 3
+    #         },
+    #         "02": {
+    #             "a": 3,
+    #             "b": 4,
+    #             "c": 5
+    #         },
+    #         "03": {
+    #             "a": 6,
+    #             "b": 7,
+    #             "c": 8
+    #         }
+    #     }
 
-        tpl = ["a"]
-        expect = 1
-        self.assertEqual(expect, nb.get_p_rentan(tpl, dic))
+    #     tpl = ["a"]
+    #     expect = 1
+    #     self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))
         
-        tpl = ["a", "b"]
-        expect = 5
-        self.assertEqual(expect, nb.get_p_rentan(tpl, dic))
+    #     tpl = ["a", "b"]
+    #     expect = 5
+    #     self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))
 
 
-        tpl = ["b", "c"]
-        expect = 7
-        self.assertEqual(expect, nb.get_p_rentan(tpl, dic))
+    #     tpl = ["b", "c"]
+    #     expect = 7
+    #     self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))

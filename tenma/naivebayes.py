@@ -81,7 +81,26 @@ if __name__ == "__main__":
     df['kakuteijyuni_bf4'] = df.groupby('kettonum')['kakuteijyuni'].shift(4).fillna(-1)
 
     mask = (df['year'] == year) & (df['monthday'] == monthday)
-    df_output = nb.NaiveBayesModel(df, df[mask].reset_index(), l_col, 1)
+
+    df_output = nb.get_NaiveBayesFactors(df, df[mask].reset_index(), l_col, 1)
+    print('INSERT INTO "public"."t_factor"("year","monthday","jyocd","racenum","kettonum","factor","score") VALUES')
+    for idx, row in df_output.iterrows():
+        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',E'%s',%f)" % (
+            int(row['year']),
+            int(row['monthday']),
+            int(row['jyocd']),
+            int(row['racenum']),
+            row['kettonum'],
+            row['factor'],
+            float(row['score'])
+        )
+        if idx == len(df_output.index) - 1:
+            text += ";"
+        else:
+            text += ","
+        print(text)
+
+    df_output = nb.get_NaiveBayesProbability(df, df[mask].reset_index(), l_col, 1)
     df_output['predict'] = df_output.groupby(['year', 'monthday', 'jyocd', 'racenum'])['odds'].rank(ascending=True)
 
     # インサート文で出力
@@ -101,7 +120,7 @@ if __name__ == "__main__":
             text += ","
         print(text)
 
-    df_output = nb.NaiveBayesModel(df, df[mask].reset_index(), l_col, 2)
+    df_output = nb.get_NaiveBayesProbability(df, df[mask].reset_index(), l_col, 2)
     # インサート文で出力
     print('INSERT INTO "public"."t_umatan"("year","monthday","jyocd","racenum","kettonum_1chaku","kettonum_2chaku","odds") VALUES')
     for idx, row in df_output.iterrows():
