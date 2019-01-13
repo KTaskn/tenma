@@ -5,50 +5,64 @@ import pandas as pd
 from tenma import dataload
 from datetime import datetime
 
-# P(A)
-def P_A(df, col_A, A):
-    if(col_A not in df.columns):
-        raise KeyError("%sはデータフレームに存在しない列です" % col_A)
+class NaiveBayes():
+    def __init__(self, df, P_B, l_name_A, l_jyoken_A, name_B, jyoken_B):
+        self.probability = np.nan
+        self.df = df
+        self.p_b = P_B
+        self.l_name_A = l_name_A
+        self.l_jyoken_A = l_jyoken_A
+        self.name_B = name_B
+        self.jyoken_B = jyoken_B
 
-    if(len(df.index) == 0):
-        raise RuntimeError("データフレームにデータが存在しません")
+    def predict(self):
+        _df = self.df
+        _p_b = self.p_b
+        _name_B = self.name_B
+        _jyoken_B = self.jyoken_B
+        for name_A, jyoken_A in zip(self.l_name_A, self.l_jyoken_A):
+            _p_b = self.__P_BA(_df, _p_b, name_A, jyoken_A, _name_B, _jyoken_B)
+        self.probability = _p_b
 
-    numerator = (df[col_A] == A).astype(int).sum()
+    # P(A)
+    def __P_A(self, df, col_A, A):
+        if(col_A not in df.columns):
+            raise KeyError("%sはデータフレームに存在しない列です" % col_A)
 
-    if numerator <= 0 :
-        return np.log10(1.0 / (len(df[col_A].index) + len(df.index)))
-        #return -50.0
-    else:
-        return np.log10(numerator / len(df[col_A].index))
+        if(len(df.index) == 0):
+            raise RuntimeError("データフレームにデータが存在しません")
 
-# P(A|B)
-def P_AB(df, col_A, A, col_B, B):
-    if(len(df.index) == 0):
-        raise RuntimeError("データフレームにデータが存在しません")
+        numerator = (df[col_A] == A).astype(int).sum()
 
-    if(col_A not in df.columns):
-        raise KeyError("%sはデータフレームに存在しない列です" % col_A)
+        if numerator <= 0 :
+            return np.log10(1.0 / (len(df[col_A].index) + len(df.index)))
+            #return -50.0
+        else:
+            return np.log10(numerator / len(df[col_A].index))
 
-    if(col_B not in df.columns):
-        raise KeyError("%sはデータフレームに存在しない列です" % col_B)
+    # P(A|B)
+    def __P_AB(self, df, col_A, A, col_B, B):
+        if(len(df.index) == 0):
+            raise RuntimeError("データフレームにデータが存在しません")
 
-    mask = (df[col_B] == B)
-    numerator = (df[mask][col_A] == A).astype(int).sum()
-    if numerator <= 0.0: 
-        return np.log10(1.0 / (mask.astype(int).sum() + len(df.index)))
-        #return -50.0
-    else:
-        return np.log10(numerator / mask.astype(int).sum())
+        if(col_A not in df.columns):
+            raise KeyError("%sはデータフレームに存在しない列です" % col_A)
 
-# P_BA
-def P_BA(df, P_B, col_A, A, col_B, B):
-    return P_AB(df, col_A, A, col_B, B) + P_B - P_A(df, col_A, A)
+        if(col_B not in df.columns):
+            raise KeyError("%sはデータフレームに存在しない列です" % col_B)
 
-def NaiveBayes(df, P_B, l_col_A, l_A, col_B, B):
-    p_b = P_B
-    for col_A, A in zip(l_col_A, l_A):
-        p_b = P_BA(df, p_b, col_A, A, col_B, B)
-    return p_b
+        mask = (df[col_B] == B)
+        numerator = (df[mask][col_A] == A).astype(int).sum()
+        if numerator <= 0.0: 
+            return np.log10(1.0 / (mask.astype(int).sum() + len(df.index)))
+            #return -50.0
+        else:
+            return np.log10(numerator / mask.astype(int).sum())
+
+    # P_BA
+    def __P_BA(self, df, P_B, col_A, A, col_B, B):
+        return self.__P_AB(df, col_A, A, col_B, B) + P_B - self.__P_A(df, col_A, A)
+
 
 def make_dic_p(df_all, df_grp, l_col, NUM):
     dic_p = dict(zip(map(lambda x: "%02d" % x, range(1, NUM + 1)), [{}] * NUM))
@@ -66,7 +80,7 @@ def make_dic_p(df_all, df_grp, l_col, NUM):
             ])
 
             p = np.log10(1 / 18.0)
-            dic_tmp[row['kettonum']] = NaiveBayes(
+            nb = NaiveBayes(
                 df_jyoken,
                 p,
                 l_col,
@@ -74,6 +88,8 @@ def make_dic_p(df_all, df_grp, l_col, NUM):
                 "kakuteijyuni",
                 jyuni
             )
+            nb.predict()
+            dic_tmp[row['kettonum']] = nb.probability
         dic_p[jyuni] = dic_tmp
     return dic_p
 
