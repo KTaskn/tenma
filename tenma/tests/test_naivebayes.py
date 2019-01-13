@@ -129,34 +129,34 @@ class TestNaivebayes(unittest.TestCase):
         A = 1
         self.assertEqual(expect, self.nb._NaiveBayes__P_BA(df, P_B, col_A, A, col_B, B))
 
-    def test_get_p_rentan(self):
-        dic = {
-            "01": {
-                "a": 1,
-                "b": 2,
-                "c": 3
-            },
-            "02": {
-                "a": 3,
-                "b": 4,
-                "c": 5
-            },
-            "03": {
-                "a": 6,
-                "b": 7,
-                "c": 8
-            }
-        }
+    # def test_get_p_rentan(self):
+    #     dic = {
+    #         "01": {
+    #             "a": 1,
+    #             "b": 2,
+    #             "c": 3
+    #         },
+    #         "02": {
+    #             "a": 3,
+    #             "b": 4,
+    #             "c": 5
+    #         },
+    #         "03": {
+    #             "a": 6,
+    #             "b": 7,
+    #             "c": 8
+    #         }
+    #     }
 
-        tpl = ["a"]
-        expect = 1
-        self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))
+    #     tpl = ["a"]
+    #     expect = 1
+    #     self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))
         
-        tpl = ["a", "b"]
-        expect = 5
-        self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))
+    #     tpl = ["a", "b"]
+    #     expect = 5
+    #     self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))
 
 
-        tpl = ["b", "c"]
-        expect = 7
-        self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))
+    #     tpl = ["b", "c"]
+    #     expect = 7
+    #     self.assertEqual(expect, naivebayes.get_p_rentan(tpl, dic))

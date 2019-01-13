@@ -13,23 +13,23 @@ class NaiveBayesSummary():
     def set_probability(self, p):
         self.__probability = p
     
-    def set_entity(self, name, p):
+    def set_factor(self, name, p):
         self.__summary.append((name, p))
 
     def get_probability(self):
         return self.__probability
 
-    def get_entity(self, name=None):
+    def get_factor(self, name=None):
         if name is None:
             return self.__summary
         else:
             return dict(self.__summary)[name]
 
-    def get_bad_entity(self, num=0):
+    def get_bad_factor(self, num=0):
         return sorted(self.__summary, key=lambda x: x[1])[num]
 
     
-    def get_good_entity(self, num=0):
+    def get_good_factor(self, num=0):
         return sorted(self.__summary, key=lambda x: x[1], reverse=True)[num]
 
 
@@ -96,7 +96,7 @@ class NaiveBayes():
     def __P_BA(self, df, P_B, col_A, A, col_B, B):
         P_AB = self.__P_AB(df, col_A, A, col_B, B)
         P_A = self.__P_A(df, col_A, A)
-        self.__summary.set_entity(col_A, P_AB - P_A)
+        self.__summary.set_factor(col_A, P_AB - P_A)
         return P_AB + P_B - P_A
 
 def make_dic_p(df_all, df_grp, l_col, NUM):
@@ -166,7 +166,7 @@ def get_NaiveBayesProbability(df, df_target, l_col, NUM):
 
     return df_output
 
-def get_NaiveBayesEntities(df, df_target, l_col, NUM):
+def get_NaiveBayesFactors(df, df_target, l_col, NUM):
     df_output = pd.DataFrame([])
     grp_col = ['year', 'monthday', 'jyocd', 'racenum']
     for _, df_grp in df_target.groupby(grp_col):
@@ -176,8 +176,8 @@ def get_NaiveBayesEntities(df, df_target, l_col, NUM):
 
         for num in range(len(l_col)):
             df_tmp = pd.DataFrame(df_grp['kettonum'], columns=["kettonum"])
-            df_tmp['factor'] = list(map(lambda row: dic_p["01"][row].get_good_entity(num)[0], df_grp['kettonum']))
-            df_tmp['score'] = list(map(lambda row: dic_p["01"][row].get_good_entity(num)[1], df_grp['kettonum']))
+            df_tmp['factor'] = list(map(lambda row: dic_p["01"][row].get_good_factor(num)[0], df_grp['kettonum']))
+            df_tmp['score'] = list(map(lambda row: dic_p["01"][row].get_good_factor(num)[1], df_grp['kettonum']))
             
             # レース番号などを追加
             for idx, col in enumerate(grp_col):
