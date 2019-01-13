@@ -7,7 +7,8 @@ from datetime import datetime
 
 class NaiveBayes():
     def __init__(self, df, P_B, l_name_A, l_jyoken_A, name_B, jyoken_B):
-        self.probability = np.nan
+        self.__init_instance()
+
         self.df = df
         self.p_b = P_B
         self.l_name_A = l_name_A
@@ -16,13 +17,45 @@ class NaiveBayes():
         self.jyoken_B = jyoken_B
 
     def predict(self):
+        self.__init_probability()
+        self.__init_summary()
         _df = self.df
         _p_b = self.p_b
         _name_B = self.name_B
         _jyoken_B = self.jyoken_B
         for name_A, jyoken_A in zip(self.l_name_A, self.l_jyoken_A):
             _p_b = self.__P_BA(_df, _p_b, name_A, jyoken_A, _name_B, _jyoken_B)
-        self.probability = _p_b
+        self.__probability = _p_b
+
+    def __init_instance(self):
+        self.__init_probability()
+        self.__init_summary()
+
+    def __init_probability(self):
+        self.__probability = np.nan
+
+    def __init_summary(self):
+        self.__summary = []
+    
+    def set_summary(self, name, p):
+        self.__summary.append((name, p))
+
+    def get_probability(self):
+        return self.__probability
+
+    def get_summary(self, name=None):
+        if num is None:
+            return self.__summary
+        else:
+            return dict(self.__summary)[name]
+
+    def get_bad_summary(self, num=0):
+        return sorted(self.__summary, key=lambda x: x[1])[num]
+
+    
+    def get_good_summary(self, num=0):
+        return sorted(self.__summary, key=lambda x: x[1], reverse=True)[num]
+
 
     # P(A)
     def __P_A(self, df, col_A, A):
@@ -36,7 +69,6 @@ class NaiveBayes():
 
         if numerator <= 0 :
             return np.log10(1.0 / (len(df[col_A].index) + len(df.index)))
-            #return -50.0
         else:
             return np.log10(numerator / len(df[col_A].index))
 
@@ -53,16 +85,17 @@ class NaiveBayes():
 
         mask = (df[col_B] == B)
         numerator = (df[mask][col_A] == A).astype(int).sum()
-        if numerator <= 0.0: 
-            return np.log10(1.0 / (mask.astype(int).sum() + len(df.index)))
-            #return -50.0
+        if numerator <= 0.0:
+            result_p = np.log10(1.0 / (mask.astype(int).sum() + len(df.index)))
         else:
-            return np.log10(numerator / mask.astype(int).sum())
+            result_p = np.log10(numerator / mask.astype(int).sum())
+
+        self.set_summary(col_A, result_p)
+        return result_p
 
     # P_BA
     def __P_BA(self, df, P_B, col_A, A, col_B, B):
         return self.__P_AB(df, col_A, A, col_B, B) + P_B - self.__P_A(df, col_A, A)
-
 
 def make_dic_p(df_all, df_grp, l_col, NUM):
     dic_p = dict(zip(map(lambda x: "%02d" % x, range(1, NUM + 1)), [{}] * NUM))
@@ -89,7 +122,10 @@ def make_dic_p(df_all, df_grp, l_col, NUM):
                 jyuni
             )
             nb.predict()
-            dic_tmp[row['kettonum']] = nb.probability
+            dic_tmp[row['kettonum']] = nb.get_probability()
+            from pprint import pprint
+            pprint(nb.get_good_summary())
+            pprint(nb.get_bad_summary())
         dic_p[jyuni] = dic_tmp
     return dic_p
 
