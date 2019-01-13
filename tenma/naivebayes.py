@@ -81,19 +81,18 @@ if __name__ == "__main__":
     df['kakuteijyuni_bf4'] = df.groupby('kettonum')['kakuteijyuni'].shift(4).fillna(-1)
 
     mask = (df['year'] == year) & (df['monthday'] == monthday)
-    df_output = nb.NaiveBayesModel(df, df[mask].reset_index(), l_col, 1)
-    df_output['predict'] = df_output.groupby(['year', 'monthday', 'jyocd', 'racenum'])['odds'].rank(ascending=True)
 
-    # インサート文で出力
-    print('INSERT INTO "public"."t_predict"("year","monthday","jyocd","racenum","kettonum","predict") VALUES')
+    df_output = nb.get_NaiveBayesEntities(df, df[mask].reset_index(), l_col, 1)
+    print('INSERT INTO "public"."t_factor"("year","monthday","jyocd","racenum","kettonum","factor","score") VALUES')
     for idx, row in df_output.iterrows():
-        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',%d)" % (
+        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',E'%s',%f)" % (
             int(row['year']),
             int(row['monthday']),
             int(row['jyocd']),
             int(row['racenum']),
-            row['kettonum_1'],
-            int(row['predict'])
+            row['kettonum'],
+            row['factor'],
+            float(row['score'])
         )
         if idx == len(df_output.index) - 1:
             text += ";"
@@ -101,26 +100,46 @@ if __name__ == "__main__":
             text += ","
         print(text)
 
-    df_output = nb.NaiveBayesModel(df, df[mask].reset_index(), l_col, 2)
-    # インサート文で出力
-    print('INSERT INTO "public"."t_umatan"("year","monthday","jyocd","racenum","kettonum_1chaku","kettonum_2chaku","odds") VALUES')
-    for idx, row in df_output.iterrows():
-        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',E'%s',%.1f)" % (
-            int(row['year']),
-            int(row['monthday']),
-            int(row['jyocd']),
-            int(row['racenum']),
-            row['kettonum_1'],
-            row['kettonum_2'],
-            float(row['odds'])
-        )
-        if idx == len(df_output.index) - 1:
-            text += ";"
-        else:
-            text += ","
-        print(text)
+    # df_output = nb.get_NaiveBayesProbability(df, df[mask].reset_index(), l_col, 1)
+    # df_output['predict'] = df_output.groupby(['year', 'monthday', 'jyocd', 'racenum'])['odds'].rank(ascending=True)
+
+    # # インサート文で出力
+    # print('INSERT INTO "public"."t_predict"("year","monthday","jyocd","racenum","kettonum","predict") VALUES')
+    # for idx, row in df_output.iterrows():
+    #     text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',%d)" % (
+    #         int(row['year']),
+    #         int(row['monthday']),
+    #         int(row['jyocd']),
+    #         int(row['racenum']),
+    #         row['kettonum_1'],
+    #         int(row['predict'])
+    #     )
+    #     if idx == len(df_output.index) - 1:
+    #         text += ";"
+    #     else:
+    #         text += ","
+    #     print(text)
+
+    # df_output = nb.get_NaiveBayesProbability(df, df[mask].reset_index(), l_col, 2)
+    # # インサート文で出力
+    # print('INSERT INTO "public"."t_umatan"("year","monthday","jyocd","racenum","kettonum_1chaku","kettonum_2chaku","odds") VALUES')
+    # for idx, row in df_output.iterrows():
+    #     text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',E'%s',%.1f)" % (
+    #         int(row['year']),
+    #         int(row['monthday']),
+    #         int(row['jyocd']),
+    #         int(row['racenum']),
+    #         row['kettonum_1'],
+    #         row['kettonum_2'],
+    #         float(row['odds'])
+    #     )
+    #     if idx == len(df_output.index) - 1:
+    #         text += ";"
+    #     else:
+    #         text += ","
+    #     print(text)
     
-    for idx, row in df[mask].iterrows():
-        text = 'INSERT INTO "public"."t_name" ("kettonum","bamei")'
-        text += 'SELECT E\'%s\', E\'%s\' WHERE NOT EXISTS (SELECT "kettonum" FROM "public"."t_name" WHERE "kettonum" = E\'%s\');'
-        print(text % (row['kettonum'], row['bamei'], row['kettonum']))
+    # for idx, row in df[mask].iterrows():
+    #     text = 'INSERT INTO "public"."t_name" ("kettonum","bamei")'
+    #     text += 'SELECT E\'%s\', E\'%s\' WHERE NOT EXISTS (SELECT "kettonum" FROM "public"."t_name" WHERE "kettonum" = E\'%s\');'
+    #     print(text % (row['kettonum'], row['bamei'], row['kettonum']))

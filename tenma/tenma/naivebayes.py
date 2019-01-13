@@ -174,17 +174,20 @@ def get_NaiveBayesEntities(df, df_target, l_col, NUM):
         # 確率のリストを作成する
         dic_p = make_dic_p(df, df_grp, l_col, NUM)
 
-        df_tmp = pd.DataFrame(df_grp['kettonum'], columns=["kettonum"])
-        df_tmp['good_name'] = list(map(lambda row: dic_p["01"][row].get_good_entity()[0], df_grp['kettonum']))
-        df_tmp['good_score'] = list(map(lambda row: dic_p["01"][row].get_good_entity()[1], df_grp['kettonum']))
-        df_tmp['bad_name'] = list(map(lambda row: dic_p["01"][row].get_bad_entity()[0], df_grp['kettonum']))
-        df_tmp['bad_score'] = list(map(lambda row: dic_p["01"][row].get_bad_entity()[1], df_grp['kettonum']))
-        
-        # 他のレースとのデータフレームと結合する
-        df_output = pd.concat([
-            df_output,
-            df_tmp
-        ], ignore_index=True)
+        for num in range(len(l_col)):
+            df_tmp = pd.DataFrame(df_grp['kettonum'], columns=["kettonum"])
+            df_tmp['factor'] = list(map(lambda row: dic_p["01"][row].get_good_entity(num)[0], df_grp['kettonum']))
+            df_tmp['score'] = list(map(lambda row: dic_p["01"][row].get_good_entity(num)[1], df_grp['kettonum']))
+            
+            # レース番号などを追加
+            for idx, col in enumerate(grp_col):
+                df_tmp[col] = _[idx]
+                
+            # 他のレースとのデータフレームと結合する
+            df_output = pd.concat([
+                df_output,
+                df_tmp
+            ], ignore_index=True)
 
 
     return df_output
