@@ -90,12 +90,14 @@ class NaiveBayes():
         else:
             result_p = np.log10(numerator / mask.astype(int).sum())
 
-        self.__summary.set_entity(col_A, result_p)
         return result_p
 
     # P_BA
     def __P_BA(self, df, P_B, col_A, A, col_B, B):
-        return self.__P_AB(df, col_A, A, col_B, B) + P_B - self.__P_A(df, col_A, A)
+        P_AB = self.__P_AB(df, col_A, A, col_B, B)
+        P_A = self.__P_A(df, col_A, A)
+        self.__summary.set_entity(col_A, P_AB - P_A)
+        return P_AB + P_B - P_A
 
 def make_dic_p(df_all, df_grp, l_col, NUM):
     dic_p = dict(zip(map(lambda x: "%02d" % x, range(1, NUM + 1)), [{}] * NUM))
@@ -132,7 +134,7 @@ def get_p_rentan(tpl, dic):
         p += dic["%02d" % (idx + 1)][id].get_probability()
     return p
 
-def NaiveBayesModel(df, df_target, l_col, NUM):
+def get_NaiveBayesProbability(df, df_target, l_col, NUM):
     df_output = pd.DataFrame([])
     grp_col = ['year', 'monthday', 'jyocd', 'racenum']
     for _, df_grp in df_target.groupby(grp_col):
@@ -161,5 +163,28 @@ def NaiveBayesModel(df, df_target, l_col, NUM):
             df_output,
             df_tmp
         ], ignore_index=True)
+
+    return df_output
+
+def get_NaiveBayesEntities(df, df_target, l_col, NUM):
+    df_output = pd.DataFrame([])
+    grp_col = ['year', 'monthday', 'jyocd', 'racenum']
+    for _, df_grp in df_target.groupby(grp_col):
+
+        # 確率のリストを作成する
+        dic_p = make_dic_p(df, df_grp, l_col, NUM)
+
+        df_tmp = pd.DataFrame(df_grp['kettonum'], columns=["kettonum"])
+        df_tmp['good_name'] = list(map(lambda row: dic_p["01"][row].get_good_entity()[0], df_grp['kettonum']))
+        df_tmp['good_score'] = list(map(lambda row: dic_p["01"][row].get_good_entity()[1], df_grp['kettonum']))
+        df_tmp['bad_name'] = list(map(lambda row: dic_p["01"][row].get_bad_entity()[0], df_grp['kettonum']))
+        df_tmp['bad_score'] = list(map(lambda row: dic_p["01"][row].get_bad_entity()[1], df_grp['kettonum']))
+        
+        # 他のレースとのデータフレームと結合する
+        df_output = pd.concat([
+            df_output,
+            df_tmp
+        ], ignore_index=True)
+
 
     return df_output
