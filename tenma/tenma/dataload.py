@@ -74,6 +74,27 @@ def load():
 
     return df
 
+def load_racename(year, monthday):
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT year, monthday, jyocd::int, racenum::int, ryakusyo10
+    FROM n_race
+    WHERE year = '%s'
+    AND monthday = '%s'
+    AND ryakusyo10 <> '';
+    """ % (year, monthday)
+
+    with psycopg2.connect(dbparams) as conn:
+        df = pd.io.sql.read_sql_query(query, conn)
+
+    return df
+
 def split(df):
     mask = (df['year'].astype(int) < 2018)
     return df.pipe(lambda df: df[mask]), df.pipe(lambda df: df[~mask])

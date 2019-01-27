@@ -143,3 +143,19 @@ if __name__ == "__main__":
         text = 'INSERT INTO "public"."t_name" ("kettonum","bamei")'
         text += 'SELECT E\'%s\', E\'%s\' WHERE NOT EXISTS (SELECT "kettonum" FROM "public"."t_name" WHERE "kettonum" = E\'%s\');'
         print(text % (row['kettonum'], row['bamei'], row['kettonum']))
+
+    df_output = dataload.load_racename(year, monthday)
+    print('INSERT INTO "public"."t_racename"("year","monthday","jyocd","racenum","racename") VALUES')
+    for idx, row in df_output.iterrows():
+        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s')" % (
+            int(row['year']),
+            int(row['monthday']),
+            int(row['jyocd']),
+            int(row['racenum']),
+            row['ryakusyo10'],
+        )
+        if idx == len(df_output.index) - 1:
+            text += ";"
+        else:
+            text += ","
+        print(text)
