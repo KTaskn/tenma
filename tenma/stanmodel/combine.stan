@@ -10,27 +10,28 @@ data {
 parameters {
     vector[D] W;
     real bias;
-    real <lower=0> s[N, H];
+    real<lower=0> s[N, H];
 }
 
 model {
 
-    W ~ normal(0, 10000.0);
-    bias ~ normal(0, 10000.0);
+    W ~ normal(0, 1.0);
+    bias ~ normal(0, 0.25);
 
     for (n in 1:N){
-        s[n] ~ normal(inv_logit(sum(X[n] * W) + bias), 0.1);
+        //s[n] ~ lognormal(exp(bias + sum(X[n] * W)), 0.125);
+        s[n] ~ normal(bias + sum(X[n] * W), 0.125);
     }
 
     for (n in 1:N){
-        real y = 0.0;
+        real y = 1.0;
         for (h in 1:H){
-            real tmp_2 = 0.0;
-            for(hi in 1:h){
-                tmp_2 = tmp_2 + exp(s[n, hi]);
+            real tmp = 0.0;
+            for(hi in h:H){
+                tmp += exp(s[n, hi]);
             }
-            y *= exp(s[n, h]) / tmp_2;
+            y *= exp(s[n, h]) / tmp;
         }
-        Y[n] ~ normal(y, 0.1);
+        Y[n] ~ normal(y, 0.01);
     }
 }
