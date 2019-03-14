@@ -28,6 +28,7 @@ def load():
     n_uma_race.racenum,
     n_uma_race.kettonum,
     n_uma_race.kakuteijyuni,
+    n_uma_race.bamei,
     SUM(CASE WHEN t.kakuteijyuni IN ('01', '02', '03') AND n_race.kyori <> t.kyori THEN 1 ELSE 0 END) AS win_other,
     SUM(CASE WHEN n_race.kyori <> t.kyori THEN 1 ELSE 0 END) AS race_other,
     SUM(CASE WHEN t.kakuteijyuni IN ('01', '02', '03') AND n_race.kyori = t.kyori THEN 1 ELSE 0 END) AS win_kyori,
@@ -70,31 +71,20 @@ def load():
                 SUBSTRING(n_uma_race.monthday, 3, 4)
             )
         ) > t._date
-    WHERE n_uma_race.year in ('2018')
+    WHERE n_uma_race.year in ('2019')
     GROUP BY n_uma_race.year,
     n_uma_race.monthday,
     n_uma_race.jyocd,
     n_uma_race.racenum,
     n_uma_race.kettonum,
+    n_uma_race.bamei,
     n_uma_race.kakuteijyuni;
     """
 
-    PATH = "2018_race_combine.csv"
-    if os.path.exists(PATH):
-        df = pd.read_csv(PATH, dtype=str).pipe(lambda df: df[df['jyocd'].map(
-            lambda x: x in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
-        )])
-        df['win_other'] = df['win_other'].astype(int)
-        df['race_other'] = df['race_other'].astype(int)
-        df['win_kyori'] = df['win_kyori'].astype(int)
-        df['race_kyori'] = df['race_kyori'].astype(int)
-        df['win_grade'] = df['win_grade'].astype(int)
-        df['race_grade'] = df['race_grade'].astype(int)
-    else:
-        with psycopg2.connect(dbparams) as conn:
-            df = pd.io.sql.read_sql_query(query, conn)
-            df.to_csv(PATH, index=False)
+    with psycopg2.connect(dbparams) as conn:
+        df = pd.io.sql.read_sql_query(query, conn)
     df = df.sort_values(['year', 'monthday', 'jyocd'])
+    print(df.columns)
     return df
 
 def smile(x):
@@ -159,13 +149,10 @@ def get_score(x):
         return 0.0
     
 if __name__ == "__main__":
-    """
     df = load()
 
-    # year = sys.argv[1]
-    # monthday = sys.argv[2]
-    year = "2018"
-    monthday = "0000"
+    year = sys.argv[1]
+    monthday = sys.argv[2]
 
     l_col = [
         "other",
@@ -173,97 +160,38 @@ if __name__ == "__main__":
         "kyori"
     ]
 
-    df['other'] = np.random.beta(
-        df['win_other'] + 0.001,
-        df['race_other'] - df['win_other'] + 0.001
-    )
+    mask = (df['year'] == year)
+    df = df[mask].reset_index(drop=True)
 
-    df['grade'] = np.random.beta(
-        df['win_grade'] + 0.001,
-        df['race_grade'] - df['win_grade'] + 0.001
-    )
-
-    df['kyori'] = np.random.beta(
-        df['win_kyori'] + 0.001,
-        df['race_kyori'] - df['win_kyori'] + 0.001
-    )
-
-    df['score'] = df['kakuteijyuni'].astype(int).map(get_score)
-
-
-    mask = (df['year'] == year) & (df['kakuteijyuni'] != '00') #& (df['monthday'] == "0106") 
-    H = 5
-    data_ppd = []
-    data_x = []
 
     def zscore(x):
         return (x - x.mean()) / x.std()
 
-    for col in l_col:
-        df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
+    df['score'] = 0.0
+    for i in range(100):
+        df['other'] = np.random.beta(
+            df['win_other'] + 0.001,
+            df['race_other'] - df['win_other'] + 0.001
+        )
 
-    for idx_grp, grp in df[mask].groupby(['year', 'monthday', 'jyocd', 'racenum']):
-        grp = grp.sort_values('kakuteijyuni')
-        grp.index = grp['kakuteijyuni'].values
-        l_comb = list(itertools.combinations(grp['kakuteijyuni'].values, H))
-        l_comb = np.array(list(filter(lambda tpl: ("01" in tpl) or ("02" in tpl) or ("03" in tpl), l_comb)))
-        print(idx_grp, len(l_comb))
-        for a_comb in l_comb[np.random.random(len(l_comb)) < 0.05]:
-            ppd = 1.0
-            row_x = []
-            i = 0
-            for idx_row, row in grp.T[list(a_comb)].T.iterrows():
-                if i >= 5:
-                    break
-                ppd *= np.exp(row['score']) / grp.ix[idx_row:, "score"].map(np.exp).sum()
-                row_x.append(row[l_col].values.tolist())
-                i += 1
+        df['grade'] = np.random.beta(
+            df['win_grade'] + 0.001,
+            df['race_grade'] - df['win_grade'] + 0.001
+        )
 
-            data_x.append(row_x)
-            data_ppd.append(ppd)
+        df['kyori'] = np.random.beta(
+            df['win_kyori'] + 0.001,
+            df['race_kyori'] - df['win_kyori'] + 0.001
+        )
 
-    print(len(data_x))
+        df['score'] = df['kakuteijyuni'].astype(int).map(get_score)
+
+        df_param = pd.read_csv('result.csv')
 
 
-    data = {
-        "N": len(data_x),
-        "H": H,
-        "D": len(l_col),
-        "X": data_x,
-        "Y": data_ppd,
-    }
+        for col in l_col:
+            df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
 
-
-    with open("data_dict.json", "w") as f:
-        json.dump(data, f, indent="\t")
-        del(df)
-        del(data_x)
-        del(data_ppd)
-    """
-
-    with open("data_dict.json") as f:
-        data = json.load(f)
-
-    # N = 5000
-    # data = {
-    #     "N": N,
-    #     "H": data['H'],
-    #     "D": data['D'],
-    #     "X": data['X'][:N],
-    #     "Y": data['Y'][:N],
-    # }
-
-    STAN_MODEL_PATH = "stanmodel/combine.stan"
-    model = pystan.StanModel(file=STAN_MODEL_PATH)
-
-    fit_vb = model.vb(data=data, pars=["W", "bias"],
-            iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
-    df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
-    print(df)
-    df.to_csv('result.csv', index=False)
-
-    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
-    # samples = fit.extract(permuted=True)
-    # df = pd.DataFrame(samples)
-    # df.to_csv('result.csv', index=False)
-    
+        df['score'] += np.dot(df[l_col], df_param[["W.1", "W.2", "W.3"]].mean()) + df_param["bias"].mean()
+    df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False)
+    df[['year', 'monthday', 'jyocd', 'racenum', 'bamei', 'predict', "kakuteijyuni", "score"]].to_csv('evaluate.csv', index=False)
