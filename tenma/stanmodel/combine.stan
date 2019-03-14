@@ -19,8 +19,8 @@ model {
     bias ~ normal(0, 0.25);
 
     for (n in 1:N){
-        //s[n] ~ lognormal(exp(bias + sum(X[n] * W)), 0.125);
-        s[n] ~ normal(bias + sum(X[n] * W), 0.125);
+        s[n] ~ lognormal(exp(bias + X[n] * W), 0.125);
+        // s[n] ~ normal(bias + X[n] * W, 0.125);
     }
 
     for (n in 1:N){
