@@ -30,7 +30,7 @@ model {
             for(d in 1:D){
                 a += X[n, h, d] * W[d];
             }
-            s[h] = a;
+            s[h] = log(1 + exp(a));
         }
 
         y = 1.0;

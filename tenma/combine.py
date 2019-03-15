@@ -26,7 +26,11 @@ def load():
     n_uma_race.monthday,
     n_uma_race.jyocd,
     n_uma_race.racenum,
+    n_race.kyori,
+    n_race.trackcd,
     n_uma_race.kettonum,
+    n_uma_race.kisyucode,
+    n_uma_race.chokyosicode,
     n_uma_race.kakuteijyuni,
     SUM(CASE WHEN t.kakuteijyuni IN ('01', '02', '03') AND n_race.kyori <> t.kyori THEN 1 ELSE 0 END) AS win_other,
     SUM(CASE WHEN n_race.kyori <> t.kyori THEN 1 ELSE 0 END) AS race_other,
@@ -75,7 +79,11 @@ def load():
     n_uma_race.monthday,
     n_uma_race.jyocd,
     n_uma_race.racenum,
+    n_race.kyori,
+    n_race.trackcd,
     n_uma_race.kettonum,
+    n_uma_race.kisyucode,
+    n_uma_race.chokyosicode,
     n_uma_race.kakuteijyuni;
     """
 
@@ -95,6 +103,127 @@ def load():
             df = pd.io.sql.read_sql_query(query, conn)
             df.to_csv(PATH, index=False)
     df = df.sort_values(['year', 'monthday', 'jyocd'])
+    return df
+
+def load_kisyu():
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT
+    n_uma_race.kisyucode,
+     DATE(DATE_TRUNC('month', DATE(
+            CONCAT(
+                n_uma_race.year,
+                '-',
+                SUBSTRING(n_uma_race.monthday, 0, 3),
+                '-',
+                SUBSTRING(n_uma_race.monthday, 3, 4)
+            )
+        ) - 14)) AS _month,
+    SUM(CASE WHEN n_uma_race.kakuteijyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) AS win_kisyu,
+    COUNT(n_uma_race.kakuteijyuni) AS race_kisyu
+    FROM n_uma_race
+    WHERE n_uma_race.year IN ('2017', '2018')
+    GROUP BY n_uma_race.kisyucode, _month;
+    """
+
+
+    PATH = "2018_race_kisyu.csv"
+    if os.path.exists(PATH):
+        df = pd.read_csv(PATH, dtype=str)
+        df['win_kisyu'] = df['win_kisyu'].astype(int)
+        df['race_kisyu'] = df['race_kisyu'].astype(int)
+    else:
+        with psycopg2.connect(dbparams) as conn:
+            df = pd.io.sql.read_sql_query(query, conn)
+            df.to_csv(PATH, index=False)
+    return df
+
+def load_chokyo():
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT
+    n_uma_race.chokyosicode,
+     DATE(DATE_TRUNC('month', DATE(
+            CONCAT(
+                n_uma_race.year,
+                '-',
+                SUBSTRING(n_uma_race.monthday, 0, 3),
+                '-',
+                SUBSTRING(n_uma_race.monthday, 3, 4)
+            )
+        ) - 14)) AS _month,
+    SUM(CASE WHEN n_uma_race.kakuteijyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) AS win_chokyo,
+    COUNT(n_uma_race.kakuteijyuni) AS race_chokyo
+    FROM n_uma_race
+    WHERE n_uma_race.year IN ('2017', '2018')
+    GROUP BY n_uma_race.chokyosicode, _month;
+    """
+
+
+    PATH = "2018_race_chokyo.csv"
+    if os.path.exists(PATH):
+        df = pd.read_csv(PATH, dtype=str)
+        df['win_chokyo'] = df['win_chokyo'].astype(int)
+        df['race_chokyo'] = df['race_chokyo'].astype(int)
+    else:
+        with psycopg2.connect(dbparams) as conn:
+            df = pd.io.sql.read_sql_query(query, conn)
+            df.to_csv(PATH, index=False)
+    return df
+
+
+def load_titiuma():
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT
+    n_uma.kettonum,
+    t.*
+    FROM n_uma
+    INNER JOIN
+    (SELECT
+    n_race.trackcd,
+    n_race.kyori,
+    n_uma.Ketto3InfoHansyokuNum1,
+    SUM(CASE WHEN n_uma_race.kakuteijyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) AS win_titiuma,
+    COUNT(n_uma_race.kakuteijyuni) AS race_titiuma
+    FROM n_uma_race
+    INNER JOIN n_uma ON n_uma_race.kettonum = n_uma.kettonum
+    INNER JOIN n_race 
+    ON n_uma_race.year = n_race.year
+    AND n_uma_race.monthday = n_race.monthday
+    AND n_uma_race.jyocd = n_race.jyocd
+    AND n_uma_race.racenum = n_race.racenum
+    GROUP BY n_uma.Ketto3InfoHansyokuNum1, n_race.trackcd, n_race.kyori) AS t
+    ON n_uma.Ketto3InfoHansyokuNum1 = t.Ketto3InfoHansyokuNum1;
+    """
+
+    PATH = "2018_race_titiuma.csv"
+    if os.path.exists(PATH):
+        df = pd.read_csv(PATH, dtype=str)
+        df['win_titiuma'] = df['win_titiuma'].astype(int)
+        df['race_titiuma'] = df['race_titiuma'].astype(int)
+    else:
+        with psycopg2.connect(dbparams) as conn:
+            df = pd.io.sql.read_sql_query(query, conn)
+            df.to_csv(PATH, index=False)
     return df
 
 def smile(x):
@@ -157,8 +286,26 @@ def get_score(x):
         return 0.0
     
 if __name__ == "__main__":
-    """
-    df = load()
+    df = pd.merge(
+        pd.merge(
+            pd.merge(
+                load().pipe(lambda df: df.assign(
+                    _month = df['year'] + "-" + df['monthday'].map(lambda x: x[:2])
+                )),
+                load_kisyu().pipe(lambda df: df.assign(
+                    _month = df['_month'].map(lambda x: x[:7])
+                )),
+                on=['kisyucode', '_month']
+            ),
+            load_chokyo().pipe(lambda df: df.assign(
+                _month = df['_month'].map(lambda x: x[:7])
+            )),
+            on=['chokyosicode', '_month']
+        ),
+        load_titiuma(),
+        on=['kettonum', 'trackcd', 'kyori']
+    )
+    print(df.columns)
 
     # year = sys.argv[1]
     # monthday = sys.argv[2]
@@ -168,7 +315,10 @@ if __name__ == "__main__":
     l_col = [
         "other",
         "grade",
-        "kyori"
+        "kyori",
+        "kisyu",
+        "chokyo",
+        "titiuma"
     ]
 
     df['other'] = np.random.beta(
@@ -184,6 +334,21 @@ if __name__ == "__main__":
     df['kyori'] = np.random.beta(
         df['win_kyori'] + 0.001,
         df['race_kyori'] - df['win_kyori'] + 0.001
+    )
+
+    df['kisyu'] = np.random.beta(
+        df['win_kisyu'] + 0.001,
+        df['race_kisyu'] - df['win_kisyu'] + 0.001
+    )
+
+    df['chokyo'] = np.random.beta(
+        df['win_chokyo'] + 0.001,
+        df['race_chokyo'] - df['win_chokyo'] + 0.001
+    )
+
+    df['titiuma'] = np.random.beta(
+        df['win_titiuma'] + 0.001,
+        df['race_titiuma'] - df['win_titiuma'] + 0.001
     )
 
     df['score'] = df['kakuteijyuni'].astype(int).map(get_score)
@@ -237,7 +402,6 @@ if __name__ == "__main__":
         del(df)
         del(data_x)
         del(data_ppd)
-    """
 
     with open("data_dict.json") as f:
         data = json.load(f)

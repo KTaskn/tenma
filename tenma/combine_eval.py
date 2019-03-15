@@ -87,6 +87,113 @@ def load():
     print(df.columns)
     return df
 
+def load_kisyu():
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT
+    n_uma_race.kisyucode,
+     DATE(DATE_TRUNC('month', DATE(
+            CONCAT(
+                n_uma_race.year,
+                '-',
+                SUBSTRING(n_uma_race.monthday, 0, 3),
+                '-',
+                SUBSTRING(n_uma_race.monthday, 3, 4)
+            )
+        ) - 14)) AS _month,
+    SUM(CASE WHEN n_uma_race.kakuteijyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) AS win_kisyu,
+    COUNT(n_uma_race.kakuteijyuni) AS race_kisyu
+    FROM n_uma_race
+    WHERE n_uma_race.year IN ('2018', '2019')
+    GROUP BY n_uma_race.kisyucode, _month;
+    """
+
+
+    with psycopg2.connect(dbparams) as conn:
+        df = pd.io.sql.read_sql_query(query, conn)
+    return df
+
+def load_chokyo():
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT
+    n_uma_race.chokyosicode,
+     DATE(DATE_TRUNC('month', DATE(
+            CONCAT(
+                n_uma_race.year,
+                '-',
+                SUBSTRING(n_uma_race.monthday, 0, 3),
+                '-',
+                SUBSTRING(n_uma_race.monthday, 3, 4)
+            )
+        ) - 14)) AS _month,
+    SUM(CASE WHEN n_uma_race.kakuteijyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) AS win_chokyo,
+    COUNT(n_uma_race.kakuteijyuni) AS race_chokyo
+    FROM n_uma_race
+    WHERE n_uma_race.year IN ('2018', '2019')
+    GROUP BY n_uma_race.chokyosicode, _month;
+    """
+
+
+    with psycopg2.connect(dbparams) as conn:
+        df = pd.io.sql.read_sql_query(query, conn)
+    return df
+
+
+def load_titiuma():
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT
+    n_uma.kettonum,
+    t.*
+    FROM n_uma
+    INNER JOIN
+    (SELECT
+    n_race.trackcd,
+    n_race.kyori,
+    n_uma.Ketto3InfoHansyokuNum1,
+    SUM(CASE WHEN n_uma_race.kakuteijyuni IN ('01', '02', '03') THEN 1 ELSE 0 END) AS win_titiuma,
+    COUNT(n_uma_race.kakuteijyuni) AS race_titiuma
+    FROM n_uma_race
+    INNER JOIN n_uma ON n_uma_race.kettonum = n_uma.kettonum
+    INNER JOIN n_race 
+    ON n_uma_race.year = n_race.year
+    AND n_uma_race.monthday = n_race.monthday
+    AND n_uma_race.jyocd = n_race.jyocd
+    AND n_uma_race.racenum = n_race.racenum
+    GROUP BY n_uma.Ketto3InfoHansyokuNum1, n_race.trackcd, n_race.kyori) AS t
+    ON n_uma.Ketto3InfoHansyokuNum1 = t.Ketto3InfoHansyokuNum1;
+    """
+
+    PATH = "2018_race_titiuma.csv"
+    if os.path.exists(PATH):
+        df = pd.read_csv(PATH, dtype=str)
+        df['win_titiuma'] = df['win_titiuma'].astype(int)
+        df['race_titiuma'] = df['race_titiuma'].astype(int)
+    else:
+        with psycopg2.connect(dbparams) as conn:
+            df = pd.io.sql.read_sql_query(query, conn)
+            df.to_csv(PATH, index=False)
+    return df
+
 def smile(x):
     if x <= 1300:
         return "s"
@@ -149,7 +256,26 @@ def get_score(x):
         return 0.0
     
 if __name__ == "__main__":
-    df = load()
+    df = pd.merge(
+        pd.merge(
+            pd.merge(
+                load().pipe(lambda df: df.assign(
+                    _month = df['year'] + "-" + df['monthday'].map(lambda x: x[:2])
+                )),
+                load_kisyu().pipe(lambda df: df.assign(
+                    _month = df['_month'].map(lambda x: x[:7])
+                )),
+                on=['kisyucode', '_month']
+            ),
+            load_chokyo().pipe(lambda df: df.assign(
+                _month = df['_month'].map(lambda x: x[:7])
+            )),
+            on=['chokyosicode', '_month']
+        ),
+        load_titiuma(),
+        on=['kettonum', 'trackcd', 'kyori']
+    )
+    print(df.columns)
 
     year = sys.argv[1]
     monthday = sys.argv[2]
@@ -157,7 +283,10 @@ if __name__ == "__main__":
     l_col = [
         "other",
         "grade",
-        "kyori"
+        "kyori",
+        "kisyu",
+        "chokyo",
+        "titiuma"
     ]
 
     mask = (df['year'] == year) & (df['kakuteijyuni'] != '00')
@@ -166,6 +295,9 @@ if __name__ == "__main__":
 
     def zscore(x):
         return (x - x.mean()) / x.std()
+    
+    def softplus(x):
+        return np.log(1 + np.exp(x))
 
     df['score'] = 0.0
     for i in range(100):
@@ -184,22 +316,37 @@ if __name__ == "__main__":
             df['race_kyori'] - df['win_kyori'] + 0.001
         )
 
-        df_param = pd.read_csv('params.csv')
+        df['kisyu'] = np.random.beta(
+            df['win_kisyu'] + 0.001,
+            df['race_kisyu'] - df['win_kisyu'] + 0.001
+        )
+
+        df['chokyo'] = np.random.beta(
+            df['win_chokyo'] + 0.001,
+            df['race_chokyo'] - df['win_chokyo'] + 0.001
+        )
+
+        df['titiuma'] = np.random.beta(
+            df['win_titiuma'] + 0.001,
+            df['race_titiuma'] - df['win_titiuma'] + 0.001
+        )
+
+        df_param = pd.read_csv('result.csv')
 
         for col in l_col:
             df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
-
-        l = []
-        for idx, row in df.iterros():
-            l.append(
-                df[l_col[0]] + df_param.ix[i, 'W.1']
-                + df[l_col[1]] + df_param.ix[i, 'W.2']
-                + df[l_col[2]] + df_param.ix[i, 'W.3']
-                + df_param.ix[i, 'bias']
-            )
-        df['score'] += np.array(l)
+                
+        df['score'] += (df[l_col[0]] + df_param.ix[i, 'W.1']
+            + df[l_col[1]] + df_param.ix[i, 'W.2']
+            + df[l_col[2]] + df_param.ix[i, 'W.3']
+            + df[l_col[3]] + df_param.ix[i, 'W.4']
+            + df[l_col[4]] + df_param.ix[i, 'W.5']
+            + df[l_col[5]] + df_param.ix[i, 'W.6']
+            + df_param.ix[i, 'bias']).map(softplus)
     df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False)
     # df[['year', 'monthday', 'jyocd', 'racenum', 'bamei', 'predict', "kakuteijyuni", "score"]].to_csv('evaluate.csv', index=False)
 
     from sklearn.metrics import confusion_matrix
     print(confusion_matrix((df['kakuteijyuni'] == "01"), (df['predict'] == 1)))
+    print(confusion_matrix((df['kakuteijyuni'] == "02"), (df['predict'] == 2)))
+    print(confusion_matrix((df['kakuteijyuni'] == "03"), (df['predict'] == 3)))
