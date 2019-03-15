@@ -3,38 +3,46 @@ data {
     int N;
     int H;
     int D;
-    matrix[H, D] X[N];
+    real X[N, H, D];
     real Y[N];
 }
 
 parameters {
-    vector[D] W;
+    real W[D];
     real bias;
-    // real<lower=0> s[N, H];
+    real <lower=0> p;
 }
 
 model {
+    real s[H];
+    real y;
+    real tmp;
+    real a;
 
-    W ~ normal(0, 1.5);
-    bias ~ normal(0, 1.5);
+    bias ~ normal(0, 10000);
+    p ~ normal(5, 2.5);
 
-    /*
-    for (n in 1:N){
-        // s[n] ~ lognormal(exp(bias + X[n] * W), 0.125);
-        s[n] ~ normal(bias + X[n] * W, 0.125);
+    for(d in 1:D){
+        W[d] ~ normal(0, 10000);
     }
-    */
 
     for (n in 1:N){
-        vector[H] s = bias + X[n] * W;
-        real y = 1.0;
         for (h in 1:H){
-            real tmp = 0.0;
+            a = bias;
+            for(d in 1:D){
+                a += X[n, h, d] * W[d];
+            }
+            s[h] = p * inv_logit(a);
+        }
+
+        y = 1.0;
+        for (h in 1:H){
+            tmp = 0.0;
             for(hi in h:H){
                 tmp += exp(s[hi]);
             }
             y *= exp(s[h]) / tmp;
         }
-        Y[n] ~ normal(y, 0.01);
+        Y[n] ~ normal(y, 1);
     }
 }

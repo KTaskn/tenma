@@ -148,9 +148,7 @@ def get_track(x):
 DIC_SCORE = {
     1: 10.0,
     2: 5.0,
-    3: 3.0,
-    4: 2.0,
-    5: 1.0,
+    3: 1.0
 }
 def get_score(x):
     if x in DIC_SCORE.keys():
@@ -159,7 +157,6 @@ def get_score(x):
         return 0.0
     
 if __name__ == "__main__":
-    """
     df = load()
 
     # year = sys.argv[1]
@@ -239,7 +236,6 @@ if __name__ == "__main__":
         del(df)
         del(data_x)
         del(data_ppd)
-    """
 
     with open("data_dict.json") as f:
         data = json.load(f)

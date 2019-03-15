@@ -160,7 +160,7 @@ if __name__ == "__main__":
         "kyori"
     ]
 
-    mask = (df['year'] == year)
+    mask = (df['year'] == year) & (df['kakuteijyuni'] != '00')
     df = df[mask].reset_index(drop=True)
 
 
@@ -184,14 +184,14 @@ if __name__ == "__main__":
             df['race_kyori'] - df['win_kyori'] + 0.001
         )
 
-        df['score'] = df['kakuteijyuni'].astype(int).map(get_score)
-
-        df_param = pd.read_csv('result.csv')
-
+        df_param = pd.read_csv('params.csv')
 
         for col in l_col:
             df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
 
-        df['score'] += np.dot(df[l_col], df_param[["W.1", "W.2", "W.3"]].mean()) + df_param["bias"].mean()
+        df['score'] += np.dot(df[l_col], df_param[["W.1", "W.2", "W.3"]].ix[i]) + df_param["bias"].ix[i]
     df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False)
-    df[['year', 'monthday', 'jyocd', 'racenum', 'bamei', 'predict', "kakuteijyuni", "score"]].to_csv('evaluate.csv', index=False)
+    # df[['year', 'monthday', 'jyocd', 'racenum', 'bamei', 'predict', "kakuteijyuni", "score"]].to_csv('evaluate.csv', index=False)
+
+    from sklearn.metrics import confusion_matrix
+    print(confusion_matrix((df['kakuteijyuni'] == "01"), (df['predict'] == 1)))
