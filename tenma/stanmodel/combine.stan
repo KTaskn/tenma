@@ -10,7 +10,6 @@ data {
 parameters {
     real W[D];
     real bias;
-    real <lower=0> p;
 }
 
 model {
@@ -20,7 +19,6 @@ model {
     real a;
 
     bias ~ normal(0, 10000);
-    p ~ normal(5, 2.5);
 
     for(d in 1:D){
         W[d] ~ normal(0, 10000);
@@ -32,7 +30,7 @@ model {
             for(d in 1:D){
                 a += X[n, h, d] * W[d];
             }
-            s[h] = p * inv_logit(a);
+            s[h] = a;
         }
 
         y = 1.0;

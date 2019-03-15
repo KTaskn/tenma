@@ -157,6 +157,7 @@ def get_score(x):
         return 0.0
     
 if __name__ == "__main__":
+    """
     df = load()
 
     # year = sys.argv[1]
@@ -236,6 +237,7 @@ if __name__ == "__main__":
         del(df)
         del(data_x)
         del(data_ppd)
+    """
 
     with open("data_dict.json") as f:
         data = json.load(f)

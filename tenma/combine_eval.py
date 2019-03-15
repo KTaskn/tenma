@@ -189,7 +189,15 @@ if __name__ == "__main__":
         for col in l_col:
             df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
 
-        df['score'] += np.dot(df[l_col], df_param[["W.1", "W.2", "W.3"]].ix[i]) + df_param["bias"].ix[i]
+        l = []
+        for idx, row in df.iterros():
+            l.append(
+                df[l_col[0]] + df_param.ix[i, 'W.1']
+                + df[l_col[1]] + df_param.ix[i, 'W.2']
+                + df[l_col[2]] + df_param.ix[i, 'W.3']
+                + df_param.ix[i, 'bias']
+            )
+        df['score'] += np.array(l)
     df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False)
     # df[['year', 'monthday', 'jyocd', 'racenum', 'bamei', 'predict', "kakuteijyuni", "score"]].to_csv('evaluate.csv', index=False)
 
