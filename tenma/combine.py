@@ -21,7 +21,31 @@ def load():
         )
     
     query = """
-    SELECT
+	SELECT
+	tbl_1.*,
+	tbl_2.kyori,
+    tbl_2.trackcd,
+    tbl_2.kisyucode,
+    tbl_2.chokyosicode,
+    tbl_2.kakuteijyuni,
+    tbl_2.win_other,
+    tbl_2.race_other,
+    tbl_2.win_kyori,
+    tbl_2.race_kyori,
+    tbl_2.win_grade,
+    tbl_2.race_grade
+    FROM 
+	(SELECT
+    n_uma_race.year,
+    n_uma_race.monthday,
+    n_uma_race.jyocd,
+    n_uma_race.racenum,
+    n_uma_race.kettonum,
+    n_uma_race.kakuteijyuni
+    FROM n_uma_race
+    WHERE n_uma_race.year in ('2018')) AS tbl_1
+    LEFT JOIN
+    (SELECT
     n_uma_race.year,
     n_uma_race.monthday,
     n_uma_race.jyocd,
@@ -63,6 +87,7 @@ def load():
         AND n_uma_race.monthday = n_race.monthday
         AND n_uma_race.jyocd = n_race.jyocd
         AND n_uma_race.racenum = n_race.racenum
+        AND n_uma_race.year::int > 2015
     ) AS t
     ON n_uma_race.kettonum = t.kettonum
     AND DATE(
@@ -74,6 +99,7 @@ def load():
                 SUBSTRING(n_uma_race.monthday, 3, 4)
             )
         ) > t._date
+    AND n_uma_race.year in ('2018')
     WHERE n_uma_race.year in ('2018')
     GROUP BY n_uma_race.year,
     n_uma_race.monthday,
@@ -84,7 +110,12 @@ def load():
     n_uma_race.kettonum,
     n_uma_race.kisyucode,
     n_uma_race.chokyosicode,
-    n_uma_race.kakuteijyuni;
+    n_uma_race.kakuteijyuni) AS tbl_2
+    ON tbl_1.year = tbl_2.year
+    AND tbl_1.monthday = tbl_2.monthday
+    AND tbl_1.jyocd = tbl_2.jyocd
+    AND tbl_1.racenum = tbl_2.racenum
+    AND tbl_1.kettonum = tbl_2.kettonum;
     """
 
     PATH = "2018_race_combine.csv"
@@ -92,12 +123,13 @@ def load():
         df = pd.read_csv(PATH, dtype=str).pipe(lambda df: df[df['jyocd'].map(
             lambda x: x in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
         )])
-        df['win_other'] = df['win_other'].astype(int)
-        df['race_other'] = df['race_other'].astype(int)
-        df['win_kyori'] = df['win_kyori'].astype(int)
-        df['race_kyori'] = df['race_kyori'].astype(int)
-        df['win_grade'] = df['win_grade'].astype(int)
-        df['race_grade'] = df['race_grade'].astype(int)
+
+        df['win_other'] = df['win_other'].fillna("0.0").astype(float).astype(int)
+        df['race_other'] = df['race_other'].fillna("0.0").astype(float).astype(int)
+        df['win_kyori'] = df['win_kyori'].fillna("0.0").astype(float).astype(int)
+        df['race_kyori'] = df['race_kyori'].fillna("0.0").astype(float).astype(int)
+        df['win_grade'] = df['win_grade'].fillna("0.0").astype(float).astype(int)
+        df['race_grade'] = df['race_grade'].fillna("0.0").astype(float).astype(int)
     else:
         with psycopg2.connect(dbparams) as conn:
             df = pd.io.sql.read_sql_query(query, conn)
@@ -138,6 +170,7 @@ def load_kisyu():
         df = pd.read_csv(PATH, dtype=str)
         df['win_kisyu'] = df['win_kisyu'].astype(int)
         df['race_kisyu'] = df['race_kisyu'].astype(int)
+        df['_month'] = df['_month'].map(lambda x: datetime.strptime(x, '%Y-%m-%d'))
     else:
         with psycopg2.connect(dbparams) as conn:
             df = pd.io.sql.read_sql_query(query, conn)
@@ -177,6 +210,7 @@ def load_chokyo():
         df = pd.read_csv(PATH, dtype=str)
         df['win_chokyo'] = df['win_chokyo'].astype(int)
         df['race_chokyo'] = df['race_chokyo'].astype(int)
+        df['_month'] = df['_month'].map(lambda x: datetime.strptime(x, '%Y-%m-%d'))
     else:
         with psycopg2.connect(dbparams) as conn:
             df = pd.io.sql.read_sql_query(query, conn)
@@ -277,7 +311,9 @@ def get_track(x):
 DIC_SCORE = {
     1: 10.0,
     2: 5.0,
-    3: 1.0
+    3: 3.0,
+    4: 2.0,
+    5: 1.0
 }
 def get_score(x):
     if x in DIC_SCORE.keys():
@@ -293,18 +329,21 @@ if __name__ == "__main__":
                     _month = df['year'] + "-" + df['monthday'].map(lambda x: x[:2])
                 )),
                 load_kisyu().pipe(lambda df: df.assign(
-                    _month = df['_month'].map(lambda x: x[:7])
+                    _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
                 )),
-                on=['kisyucode', '_month']
+                on=['kisyucode', '_month'],
+                how="left"
             ),
             load_chokyo().pipe(lambda df: df.assign(
-                _month = df['_month'].map(lambda x: x[:7])
+                _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
             )),
-            on=['chokyosicode', '_month']
+            on=['chokyosicode', '_month'],
+            how="left"
         ),
         load_titiuma(),
-        on=['kettonum', 'trackcd', 'kyori']
-    )
+        on=['kettonum', 'trackcd', 'kyori'],
+        how="left"
+    ).fillna(0.0)
     print(df.columns)
 
     # year = sys.argv[1]
@@ -360,7 +399,11 @@ if __name__ == "__main__":
     data_x = []
 
     def zscore(x):
-        return (x - x.mean()) / x.std()
+        v = x.std()
+        if v:
+            return (x - x.mean()) / v
+        else:
+            return 0.0
 
     for col in l_col:
         df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
@@ -418,14 +461,14 @@ if __name__ == "__main__":
     STAN_MODEL_PATH = "stanmodel/combine.stan"
     model = pystan.StanModel(file=STAN_MODEL_PATH)
 
-    fit_vb = model.vb(data=data, pars=["W", "bias"],
-            iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
-    df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
-    print(df)
-    df.to_csv('result.csv', index=False)
-
-    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
-    # samples = fit.extract(permuted=True)
-    # df = pd.DataFrame(samples)
+    # fit_vb = model.vb(data=data, pars=["W", "bias"],
+    #         iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
+    # df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
+    # print(df)
     # df.to_csv('result.csv', index=False)
+
+    fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
+    samples = fit.extract(permuted=True)
+    df = pd.DataFrame(samples)
+    df.to_csv('result.csv', index=False)
     

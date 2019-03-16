@@ -21,14 +21,41 @@ def load():
         )
     
     query = """
-    SELECT
+	SELECT
+	tbl_1.*,
+	tbl_2.kyori,
+    tbl_2.trackcd,
+    tbl_2.kisyucode,
+    tbl_2.chokyosicode,
+    tbl_2.kakuteijyuni,
+    tbl_2.win_other,
+    tbl_2.race_other,
+    tbl_2.win_kyori,
+    tbl_2.race_kyori,
+    tbl_2.win_grade,
+    tbl_2.race_grade
+    FROM 
+	(SELECT
     n_uma_race.year,
     n_uma_race.monthday,
     n_uma_race.jyocd,
     n_uma_race.racenum,
     n_uma_race.kettonum,
+    n_uma_race.kakuteijyuni
+    FROM n_uma_race
+    WHERE n_uma_race.year in ('2019')) AS tbl_1
+    LEFT JOIN
+    (SELECT
+    n_uma_race.year,
+    n_uma_race.monthday,
+    n_uma_race.jyocd,
+    n_uma_race.racenum,
+    n_race.kyori,
+    n_race.trackcd,
+    n_uma_race.kettonum,
+    n_uma_race.kisyucode,
+    n_uma_race.chokyosicode,
     n_uma_race.kakuteijyuni,
-    n_uma_race.bamei,
     SUM(CASE WHEN t.kakuteijyuni IN ('01', '02', '03') AND n_race.kyori <> t.kyori THEN 1 ELSE 0 END) AS win_other,
     SUM(CASE WHEN n_race.kyori <> t.kyori THEN 1 ELSE 0 END) AS race_other,
     SUM(CASE WHEN t.kakuteijyuni IN ('01', '02', '03') AND n_race.kyori = t.kyori THEN 1 ELSE 0 END) AS win_kyori,
@@ -60,6 +87,7 @@ def load():
         AND n_uma_race.monthday = n_race.monthday
         AND n_uma_race.jyocd = n_race.jyocd
         AND n_uma_race.racenum = n_race.racenum
+        AND n_uma_race.year::int > 2015
     ) AS t
     ON n_uma_race.kettonum = t.kettonum
     AND DATE(
@@ -71,14 +99,23 @@ def load():
                 SUBSTRING(n_uma_race.monthday, 3, 4)
             )
         ) > t._date
+    AND n_uma_race.year in ('2019')
     WHERE n_uma_race.year in ('2019')
     GROUP BY n_uma_race.year,
     n_uma_race.monthday,
     n_uma_race.jyocd,
     n_uma_race.racenum,
+    n_race.kyori,
+    n_race.trackcd,
     n_uma_race.kettonum,
-    n_uma_race.bamei,
-    n_uma_race.kakuteijyuni;
+    n_uma_race.kisyucode,
+    n_uma_race.chokyosicode,
+    n_uma_race.kakuteijyuni) AS tbl_2
+    ON tbl_1.year = tbl_2.year
+    AND tbl_1.monthday = tbl_2.monthday
+    AND tbl_1.jyocd = tbl_2.jyocd
+    AND tbl_1.racenum = tbl_2.racenum
+    AND tbl_1.kettonum = tbl_2.kettonum;
     """
 
     with psycopg2.connect(dbparams) as conn:
@@ -263,18 +300,21 @@ if __name__ == "__main__":
                     _month = df['year'] + "-" + df['monthday'].map(lambda x: x[:2])
                 )),
                 load_kisyu().pipe(lambda df: df.assign(
-                    _month = df['_month'].map(lambda x: x[:7])
+                    _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
                 )),
-                on=['kisyucode', '_month']
+                on=['kisyucode', '_month'],
+                how="left"
             ),
             load_chokyo().pipe(lambda df: df.assign(
-                _month = df['_month'].map(lambda x: x[:7])
+                _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
             )),
-            on=['chokyosicode', '_month']
+            on=['chokyosicode', '_month'],
+            how="left"
         ),
         load_titiuma(),
-        on=['kettonum', 'trackcd', 'kyori']
-    )
+        on=['kettonum', 'trackcd', 'kyori'],
+        how="left"
+    ).fillna(0.0)
     print(df.columns)
 
     year = sys.argv[1]
@@ -294,7 +334,10 @@ if __name__ == "__main__":
 
 
     def zscore(x):
-        return (x - x.mean()) / x.std()
+        if x.std():
+            return (x - x.mean()) / x.std()
+        else:
+            return 0.0
     
     def softplus(x):
         return np.log(1 + np.exp(x))
@@ -344,7 +387,6 @@ if __name__ == "__main__":
             + df[l_col[5]] + df_param.ix[i, 'W.6']
             + df_param.ix[i, 'bias']).map(softplus)
     df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False)
-    # df[['year', 'monthday', 'jyocd', 'racenum', 'bamei', 'predict', "kakuteijyuni", "score"]].to_csv('evaluate.csv', index=False)
 
     from sklearn.metrics import confusion_matrix
     print(confusion_matrix((df['kakuteijyuni'] == "01"), (df['predict'] == 1)))
