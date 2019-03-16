@@ -27,7 +27,6 @@ def load():
     tbl_2.trackcd,
     tbl_2.kisyucode,
     tbl_2.chokyosicode,
-    tbl_2.kakuteijyuni,
     tbl_2.win_other,
     tbl_2.race_other,
     tbl_2.win_kyori,
@@ -322,6 +321,7 @@ def get_score(x):
         return 0.0
     
 if __name__ == "__main__":
+    """
     df = pd.merge(
         pd.merge(
             pd.merge(
@@ -445,6 +445,7 @@ if __name__ == "__main__":
         del(df)
         del(data_x)
         del(data_ppd)
+    """
 
     with open("data_dict.json") as f:
         data = json.load(f)
@@ -461,14 +462,14 @@ if __name__ == "__main__":
     STAN_MODEL_PATH = "stanmodel/combine.stan"
     model = pystan.StanModel(file=STAN_MODEL_PATH)
 
-    # fit_vb = model.vb(data=data, pars=["W", "bias"],
-    #         iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
-    # df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
-    # print(df)
-    # df.to_csv('result.csv', index=False)
-
-    fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
-    samples = fit.extract(permuted=True)
-    df = pd.DataFrame(samples)
+    fit_vb = model.vb(data=data, pars=["W", "bias"],
+            iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
+    df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
+    print(df)
     df.to_csv('result.csv', index=False)
+
+    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
+    # samples = fit.extract(permuted=True)
+    # df = pd.DataFrame(samples)
+    # df.to_csv('result.csv', index=False)
     

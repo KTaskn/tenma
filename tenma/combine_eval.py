@@ -27,7 +27,6 @@ def load():
     tbl_2.trackcd,
     tbl_2.kisyucode,
     tbl_2.chokyosicode,
-    tbl_2.kakuteijyuni,
     tbl_2.win_other,
     tbl_2.race_other,
     tbl_2.win_kyori,
@@ -120,6 +119,12 @@ def load():
 
     with psycopg2.connect(dbparams) as conn:
         df = pd.io.sql.read_sql_query(query, conn)
+        df['win_other'] = df['win_other'].fillna("0.0").astype(float).astype(int)
+        df['race_other'] = df['race_other'].fillna("0.0").astype(float).astype(int)
+        df['win_kyori'] = df['win_kyori'].fillna("0.0").astype(float).astype(int)
+        df['race_kyori'] = df['race_kyori'].fillna("0.0").astype(float).astype(int)
+        df['win_grade'] = df['win_grade'].fillna("0.0").astype(float).astype(int)
+        df['race_grade'] = df['race_grade'].fillna("0.0").astype(float).astype(int)
     df = df.sort_values(['year', 'monthday', 'jyocd'])
     print(df.columns)
     return df
@@ -342,8 +347,9 @@ if __name__ == "__main__":
     def softplus(x):
         return np.log(1 + np.exp(x))
 
+
     df['score'] = 0.0
-    for i in range(100):
+    for i in range(1):
         df['other'] = np.random.beta(
             df['win_other'] + 0.001,
             df['race_other'] - df['win_other'] + 0.001
@@ -390,6 +396,6 @@ if __name__ == "__main__":
 
     from sklearn.metrics import confusion_matrix
     print(confusion_matrix(
-        (df['kakuteijyuni'].map(lambda x: x in ("01", "02", "03")) == "01"),
+        (df['kakuteijyuni'].map(lambda x: x in ["01", "02", "03"])),
         (df['predict'].map(lambda x: x in (1, 2, 3)))
     ))
