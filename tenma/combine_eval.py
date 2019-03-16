@@ -389,6 +389,7 @@ if __name__ == "__main__":
     df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False)
 
     from sklearn.metrics import confusion_matrix
-    print(confusion_matrix((df['kakuteijyuni'] == "01"), (df['predict'] == 1)))
-    print(confusion_matrix((df['kakuteijyuni'] == "02"), (df['predict'] == 2)))
-    print(confusion_matrix((df['kakuteijyuni'] == "03"), (df['predict'] == 3)))
+    print(confusion_matrix(
+        (df['kakuteijyuni'].map(lambda x: x in ("01", "02", "03")) == "01"),
+        (df['predict'].map(lambda x: x in (1, 2, 3)))
+    ))
