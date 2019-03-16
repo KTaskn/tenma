@@ -101,7 +101,7 @@ if __name__ == "__main__":
     ], ignore_index=True)
 
 
-    mask = (df['year'] == "2018")
+    mask = (df['year'] == "2019") & (df['kakuteijyuni'] != '00')
     df_predict = df[mask].reset_index(drop=True)
 
     df_X = pd.DataFrame([])
@@ -128,4 +128,8 @@ if __name__ == "__main__":
 
 
     from sklearn.metrics import confusion_matrix
-    print(confusion_matrix((df_predict['kakuteijyuni'] == "01"), (df_predict['predict'] == 1)))
+    print(confusion_matrix(
+        (df_predict['kakuteijyuni'].map(lambda x: x in ["01", "02", "03"])),
+        (df_predict['predict'].map(lambda x: x in [1, 2, 3]))
+    ))
+        
