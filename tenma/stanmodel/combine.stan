@@ -18,10 +18,10 @@ model {
     real tmp;
     real a;
 
-    bias ~ normal(0, 10000);
+    bias ~ normal(0, 10);
 
     for(d in 1:D){
-        W[d] ~ normal(0, 10000);
+        W[d] ~ normal(0, 10);
     }
 
     for (n in 1:N){
