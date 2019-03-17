@@ -11,6 +11,7 @@ import json
 import pystan
 import itertools
 from pprint import pprint
+import pickle
 
 def load():
     dbparams = "host={} user={} dbname={} port={}".format(
@@ -450,26 +451,29 @@ if __name__ == "__main__":
     with open("data_dict.json") as f:
         data = json.load(f)
 
-    # N = 5000
-    # data = {
-    #     "N": N,
-    #     "H": data['H'],
-    #     "D": data['D'],
-    #     "X": data['X'][:N],
-    #     "Y": data['Y'][:N],
-    # }
+    d = pd.Series(data['Y'])
+    mask = np.random.random(len(d)) < d.map(lambda x: x ** 1.2) * 25
+    print(len(d[mask]))
+
+    data = {
+        "N": len(d[mask]),
+        "H": data['H'],
+        "D": data['D'],
+        "X": np.array(data['X'])[mask],
+        "Y": np.array(data['Y'])[mask]
+    }
 
     STAN_MODEL_PATH = "stanmodel/combine.stan"
     model = pystan.StanModel(file=STAN_MODEL_PATH)
 
-    fit_vb = model.vb(data=data, pars=["W", "bias"],
-            iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
-    df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
-    print(df)
-    df.to_csv('result.csv', index=False)
-
-    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
-    # samples = fit.extract(permuted=True)
-    # df = pd.DataFrame(samples)
+    # fit_vb = model.vb(data=data, pars=["W", "bias"],
+    #         iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
+    # df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
+    # print(df)
     # df.to_csv('result.csv', index=False)
+
+    fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
+    samples = fit.extract(permuted=True)
     
+    with open("result.pkl", "wb") as f:
+        pickle.dump(samples, f)

@@ -11,6 +11,7 @@ import json
 import pystan
 import itertools
 from pprint import pprint
+import pickle
 
 def load():
     dbparams = "host={} user={} dbname={} port={}".format(
@@ -40,7 +41,8 @@ def load():
     n_uma_race.jyocd,
     n_uma_race.racenum,
     n_uma_race.kettonum,
-    n_uma_race.kakuteijyuni
+    n_uma_race.kakuteijyuni,
+    n_uma_race.odds
     FROM n_uma_race
     WHERE n_uma_race.year in ('2019')) AS tbl_1
     LEFT JOIN
@@ -298,6 +300,15 @@ def get_score(x):
         return 0.0
     
 if __name__ == "__main__":
+
+    # df_param = pd.read_csv('result.csv')
+    with open("result.pkl", "rb") as f:
+        params = pickle.load(f)
+
+    df_param = pd.DataFrame(params['W']).assign(bias=params['bias'])
+    df_param.columns = ['W.1','W.2','W.3','W.4','W.5','W.6','bias']
+    print(df_param)
+
     df = pd.merge(
         pd.merge(
             pd.merge(
@@ -348,8 +359,8 @@ if __name__ == "__main__":
         return np.log(1 + np.exp(x))
 
 
-    df['score'] = 0.0
-    for i in range(1):
+    df['predict'] = 0.0
+    for i in range(100):
         df['other'] = np.random.beta(
             df['win_other'] + 0.001,
             df['race_other'] - df['win_other'] + 0.001
@@ -380,22 +391,25 @@ if __name__ == "__main__":
             df['race_titiuma'] - df['win_titiuma'] + 0.001
         )
 
-        df_param = pd.read_csv('result.csv')
-
         for col in l_col:
             df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
                 
-        df['score'] += (df[l_col[0]] + df_param.ix[i, 'W.1']
+        df['score'] = (df[l_col[0]] + df_param.ix[i, 'W.1']
             + df[l_col[1]] + df_param.ix[i, 'W.2']
             + df[l_col[2]] + df_param.ix[i, 'W.3']
             + df[l_col[3]] + df_param.ix[i, 'W.4']
             + df[l_col[4]] + df_param.ix[i, 'W.5']
             + df[l_col[5]] + df_param.ix[i, 'W.6']
             + df_param.ix[i, 'bias']).map(softplus)
-    df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False)
+        
+        df['predict'] += (df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False) == 1).astype(int)
+    df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['predict'].rank(ascending=False)
 
     from sklearn.metrics import confusion_matrix
     print(confusion_matrix(
         (df['kakuteijyuni'].map(lambda x: x in ["01", "02", "03"])),
         (df['predict'].map(lambda x: x in (1, 2, 3)))
     ))
+
+    print((df['predict'] == 1).astype(int).sum())
+    print((((df['kakuteijyuni'] == "01") & (df['predict'] == 1)).astype(int) * df['odds'].astype(float) / 10.0).sum())
