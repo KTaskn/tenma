@@ -302,7 +302,7 @@ def get_score(x):
 if __name__ == "__main__":
 
     # df_param = pd.read_csv('result.csv')
-    with open("result.pkl", "rb") as f:
+    with open("result_02.pkl", "rb") as f:
         params = pickle.load(f)
 
     df_param = pd.DataFrame(params['W']).assign(bias=params['bias'])
@@ -360,7 +360,7 @@ if __name__ == "__main__":
 
 
     df['predict'] = 0.0
-    for i in range(100):
+    for i in range(1):
         df['other'] = np.random.beta(
             df['win_other'] + 0.001,
             df['race_other'] - df['win_other'] + 0.001
@@ -394,12 +394,12 @@ if __name__ == "__main__":
         for col in l_col:
             df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
                 
-        df['score'] = (df[l_col[0]] + df_param.ix[i, 'W.1']
-            + df[l_col[1]] + df_param.ix[i, 'W.2']
-            + df[l_col[2]] + df_param.ix[i, 'W.3']
-            + df[l_col[3]] + df_param.ix[i, 'W.4']
-            + df[l_col[4]] + df_param.ix[i, 'W.5']
-            + df[l_col[5]] + df_param.ix[i, 'W.6']
+        df['score'] = (df[l_col[0]] * df_param.ix[i, 'W.1']
+            + df[l_col[1]] * df_param.ix[i, 'W.2']
+            + df[l_col[2]] * df_param.ix[i, 'W.3']
+            + df[l_col[3]] * df_param.ix[i, 'W.4']
+            + df[l_col[4]] * df_param.ix[i, 'W.5']
+            + df[l_col[5]] * df_param.ix[i, 'W.6']
             + df_param.ix[i, 'bias']).map(softplus)
         
         df['predict'] += (df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False) == 1).astype(int)
