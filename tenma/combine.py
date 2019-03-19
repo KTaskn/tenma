@@ -41,7 +41,8 @@ def load():
     n_uma_race.jyocd,
     n_uma_race.racenum,
     n_uma_race.kettonum,
-    n_uma_race.kakuteijyuni
+    n_uma_race.kakuteijyuni,
+    n_uma_race.odds
     FROM n_uma_race
     WHERE n_uma_race.year in ('2018')) AS tbl_1
     LEFT JOIN
@@ -322,7 +323,6 @@ def get_score(x):
         return 0.0
     
 if __name__ == "__main__":
-    """
     df = pd.merge(
         pd.merge(
             pd.merge(
@@ -347,8 +347,6 @@ if __name__ == "__main__":
     ).fillna(0.0)
     print(df.columns)
 
-    # year = sys.argv[1]
-    # monthday = sys.argv[2]
     year = "2018"
     monthday = "0000"
 
@@ -395,9 +393,6 @@ if __name__ == "__main__":
 
 
     mask = (df['year'] == year) & (df['kakuteijyuni'] != '00') #& (df['monthday'] == "0106") 
-    H = 5
-    data_ppd = []
-    data_x = []
 
     def zscore(x):
         v = x.std()
@@ -409,71 +404,32 @@ if __name__ == "__main__":
     for col in l_col:
         df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
 
-    for idx_grp, grp in df[mask].groupby(['year', 'monthday', 'jyocd', 'racenum']):
-        grp = grp.sort_values('kakuteijyuni')
-        grp.index = grp['kakuteijyuni'].values
-        l_comb = list(itertools.combinations(grp['kakuteijyuni'].values, H))
-        l_comb = np.array(list(filter(lambda tpl: ("01" in tpl) or ("02" in tpl) or ("03" in tpl), l_comb)))
-        print(idx_grp, len(l_comb))
-        for a_comb in l_comb[np.random.random(len(l_comb)) < 0.05]:
-            ppd = 1.0
-            row_x = []
-            i = 0
-            for idx_row, row in grp.T[list(a_comb)].T.iterrows():
-                if i >= 5:
-                    break
-                ppd *= np.exp(row['score']) / grp.ix[idx_row:, "score"].map(np.exp).sum()
-                row_x.append(row[l_col].values.tolist())
-                i += 1
 
-            data_x.append(row_x)
-            data_ppd.append(ppd)
+    data_x = df[mask][l_col]
+    data_odds = df[mask]['odds'].astype(float) / 10.0
+    data_y = (df['kakuteijyuni'] == "01").astype(int)
 
-    print(len(data_x))
-
-
+    P = 30.0
     data = {
         "N": len(data_x),
-        "H": H,
         "D": len(l_col),
+        "O": data_odds,
+        "P": P,
         "X": data_x,
-        "Y": data_ppd,
-    }
-
-
-    with open("data_dict.json", "w") as f:
-        json.dump(data, f, indent="\t")
-        del(df)
-        del(data_x)
-        del(data_ppd)
-    """
-
-    with open("data_dict.json") as f:
-        data = json.load(f)
-
-    d = pd.Series(data['Y'])
-    mask = np.random.random(len(d)) < d.map(lambda x: x ** 1.2) * 25
-    print(len(d[mask]))
-
-    data = {
-        "N": len(d[mask]),
-        "H": data['H'],
-        "D": data['D'],
-        "X": np.array(data['X'])[mask],
-        "Y": np.array(data['Y'])[mask]
+        "Y": data_y,
     }
 
     STAN_MODEL_PATH = "stanmodel/combine.stan"
     model = pystan.StanModel(file=STAN_MODEL_PATH)
 
-    # fit_vb = model.vb(data=data, pars=["W", "bias"],
-    #         iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
-    # df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
-    # print(df)
-    # df.to_csv('result.csv', index=False)
+    fit_vb = model.vb(data=data, pars=None,
+            iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
+    df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
+    print(df)
+    df.to_csv('result.csv', index=False)
 
-    fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
-    samples = fit.extract(permuted=True)
+    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
+    # samples = fit.extract(permuted=True)
     
-    with open("result.pkl", "wb") as f:
-        pickle.dump(samples, f)
+    # with open("result.pkl", "wb") as f:
+    #     pickle.dump(samples, f)

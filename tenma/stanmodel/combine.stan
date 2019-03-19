@@ -1,46 +1,37 @@
 data {
     // data length
     int N;
-    int H;
     int D;
-    real X[N, H, D];
+    real X[N, D];
     real Y[N];
+    real O[N];
+    real P;
 }
 
 parameters {
-    real W[D];
+    real W_1[D];
+    real W_2[D];
+    real B[D];
     real bias;
 }
 
 model {
-    real s[H];
-    real y;
-    real tmp;
     real a;
 
     bias ~ normal(0, 10);
 
     for(d in 1:D){
-        W[d] ~ normal(0, 10);
+        W_1[d] ~ normal(0, 10);
+        W_2[d] ~ normal(0, 10);
+        B[d] ~ normal(0, 10);
     }
 
     for (n in 1:N){
-        for (h in 1:H){
-            a = bias;
-            for(d in 1:D){
-                a += X[n, h, d] * W[d];
-            }
-            s[h] = log(1 + exp(a));
+        a = bias;
+        for(d in 1:D){
+            a += X[n, d] * W_1[d];
+            a += (X[n, d] + B[n]) * (X[n, d] + B[n]) * W_2[d];
         }
-
-        y = 1.0;
-        for (h in 1:H){
-            tmp = 0.0;
-            for(hi in h:H){
-                tmp += exp(s[hi]);
-            }
-            y *= exp(s[h]) / tmp;
-        }
-        Y[n] ~ normal(y, 1);
+        Y[n] ~ bernoulli(inv_logit(normal(a, P / O[n])));
     }
 }
