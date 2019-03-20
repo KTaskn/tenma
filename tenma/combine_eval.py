@@ -301,12 +301,24 @@ def get_score(x):
     
 if __name__ == "__main__":
 
-    # df_param = pd.read_csv('result.csv')
-    with open("result_02.pkl", "rb") as f:
-        params = pickle.load(f)
+    df_param = pd.read_csv('result.csv')
+    # with open("result.pkl", "rb") as f:
+    #     params = pickle.load(f)
 
-    df_param = pd.DataFrame(params['W']).assign(bias=params['bias'])
-    df_param.columns = ['W.1','W.2','W.3','W.4','W.5','W.6','bias']
+    # df_param = pd.concat([
+    #     pd.DataFrame(params['W_1']),
+    #     pd.DataFrame(params['W_2']),
+    #     pd.DataFrame(params['B']),
+    #     pd.DataFrame(params['s']),
+    #     pd.DataFrame(params['bias'])
+    # ], axis=1)
+
+    # df_param.columns = [
+    #     'W_1.1','W_1.2','W_1.3','W_1.4','W_1.5','W_1.6',
+    #     'W_2.1','W_2.2','W_2.3','W_2.4','W_2.5','W_2.6',
+    #     'B.1','B.2','B.3','B.4','B.5','B.6',
+    #     's', 'bias'
+    # ]
     print(df_param)
 
     df = pd.merge(
@@ -358,9 +370,12 @@ if __name__ == "__main__":
     def softplus(x):
         return np.log(1 + np.exp(x))
 
+    def inv_logit(x):
+        return 1 / (1 + np.exp(-x))
+
 
     df['predict'] = 0.0
-    for i in range(1):
+    for i in range(100):
         df['other'] = np.random.beta(
             df['win_other'] + 0.001,
             df['race_other'] - df['win_other'] + 0.001
@@ -394,13 +409,20 @@ if __name__ == "__main__":
         for col in l_col:
             df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
                 
-        df['score'] = (df[l_col[0]] * df_param.ix[i, 'W.1']
-            + df[l_col[1]] * df_param.ix[i, 'W.2']
-            + df[l_col[2]] * df_param.ix[i, 'W.3']
-            + df[l_col[3]] * df_param.ix[i, 'W.4']
-            + df[l_col[4]] * df_param.ix[i, 'W.5']
-            + df[l_col[5]] * df_param.ix[i, 'W.6']
-            + df_param.ix[i, 'bias']).map(softplus)
+        df['score'] = (
+            df[l_col[0]] * df_param.ix[i, 'W_1.1']
+            + df[l_col[1]] * df_param.ix[i, 'W_1.2']
+            + df[l_col[2]] * df_param.ix[i, 'W_1.3']
+            + df[l_col[3]] * df_param.ix[i, 'W_1.4']
+            + df[l_col[4]] * df_param.ix[i, 'W_1.5']
+            + df[l_col[5]] * df_param.ix[i, 'W_1.6']
+            + (df[l_col[0]] + df_param.ix[i, 'B.1']) * (df[l_col[0]] + df_param.ix[i, 'B.1']) * df_param.ix[i, 'W_2.1']
+            + (df[l_col[1]] + df_param.ix[i, 'B.2']) * (df[l_col[1]] + df_param.ix[i, 'B.2']) * df_param.ix[i, 'W_2.2']
+            + (df[l_col[2]] + df_param.ix[i, 'B.3']) * (df[l_col[2]] + df_param.ix[i, 'B.3']) * df_param.ix[i, 'W_2.3']
+            + (df[l_col[3]] + df_param.ix[i, 'B.4']) * (df[l_col[3]] + df_param.ix[i, 'B.4']) * df_param.ix[i, 'W_2.4']
+            + (df[l_col[4]] + df_param.ix[i, 'B.5']) * (df[l_col[4]] + df_param.ix[i, 'B.5']) * df_param.ix[i, 'W_2.5']
+            + (df[l_col[5]] + df_param.ix[i, 'B.6']) * (df[l_col[5]] + df_param.ix[i, 'B.6']) * df_param.ix[i, 'W_2.6']
+            + df_param.ix[i, 'bias']).map(inv_logit)
         
         df['predict'] += (df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False) == 1).astype(int)
     df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['predict'].rank(ascending=False)

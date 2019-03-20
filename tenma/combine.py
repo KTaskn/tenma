@@ -389,10 +389,6 @@ if __name__ == "__main__":
         df['race_titiuma'] - df['win_titiuma'] + 0.001
     )
 
-    df['score'] = df['kakuteijyuni'].astype(int).map(get_score)
-
-
-    mask = (df['year'] == year) & (df['kakuteijyuni'] != '00') #& (df['monthday'] == "0106") 
 
     def zscore(x):
         v = x.std()
@@ -405,11 +401,22 @@ if __name__ == "__main__":
         df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
 
 
-    data_x = df[mask][l_col]
-    data_odds = df[mask]['odds'].astype(float) / 10.0
-    data_y = (df['kakuteijyuni'] == "01").astype(int)
+    mask = (df['year'] == year) & (df['kakuteijyuni'] != '00')
+    # mask = mask & (np.random.random(len(df.index)) < 0.1)
 
-    P = 30.0
+    df_tmp = df[mask].reset_index(drop=True)
+    df_tmp = pd.concat([
+        df_tmp[df_tmp['kakuteijyuni'].isin(["01", "02", "03"])],
+        df_tmp[-df_tmp['kakuteijyuni'].isin(["01", "02", "03"])].sample((df_tmp['kakuteijyuni'].isin(["01", "02", "03"])).sum())
+    ], ignore_index=True)
+
+    data_x = df_tmp[l_col]
+    data_odds = df_tmp['odds'].astype(float) / 10.0
+    data_y = (df_tmp['kakuteijyuni'] == "01").astype(int)
+
+
+
+    P = 45.0
     data = {
         "N": len(data_x),
         "D": len(l_col),
@@ -418,6 +425,8 @@ if __name__ == "__main__":
         "X": data_x,
         "Y": data_y,
     }
+
+    print(data['N'])
 
     STAN_MODEL_PATH = "stanmodel/combine.stan"
     model = pystan.StanModel(file=STAN_MODEL_PATH)
@@ -428,7 +437,7 @@ if __name__ == "__main__":
     print(df)
     df.to_csv('result.csv', index=False)
 
-    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=["W", "bias"])
+    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=None)
     # samples = fit.extract(permuted=True)
     
     # with open("result.pkl", "wb") as f:
