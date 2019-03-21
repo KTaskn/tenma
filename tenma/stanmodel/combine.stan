@@ -24,7 +24,8 @@ model {
         for(d in 1:D){
             a += X[n, d] * W[d];
         }
+        
         Y[n] ~ bernoulli(inv_logit(a));
-        O[n] ~ poisson(1.0 / inv_logit(a));
+        O[n] ~ poisson(1.0 / (inv_logit(a) + 0.001));
     }
 }

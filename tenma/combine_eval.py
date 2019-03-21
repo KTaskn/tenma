@@ -301,19 +301,19 @@ def get_score(x):
     
 if __name__ == "__main__":
 
-    df_param = pd.read_csv('result.csv')
-    # with open("result.pkl", "rb") as f:
-    #     params = pickle.load(f)
+    # df_param = pd.read_csv('result.csv')
+    with open("result.pkl", "rb") as f:
+        params = pickle.load(f)
 
-    # df_param = pd.concat([
-    #     pd.DataFrame(params['W']),
-    #     pd.DataFrame(params['bias'])
-    # ], axis=1)
+    df_param = pd.concat([
+        pd.DataFrame(params['W']),
+        pd.DataFrame(params['bias'])
+    ], axis=1)
 
-    # df_param.columns = [
-    #     'W.1','W.2','W.3','W.4','W.5','W.6', 'bias'
-    # ]
-    # print(df_param)
+    df_param.columns = [
+        'W.1','W.2','W.3','W.4','W.5','W.6', 'bias'
+    ]
+    print(df_param)
 
     df = pd.merge(
         pd.merge(

@@ -427,14 +427,14 @@ if __name__ == "__main__":
     STAN_MODEL_PATH = "stanmodel/combine.stan"
     model = pystan.StanModel(file=STAN_MODEL_PATH)
 
-    fit_vb = model.vb(data=data, pars=None,
-            iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
-    df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
-    # print(df)
-    df.to_csv('result.csv', index=False)
+    # fit_vb = model.vb(data=data, pars=None,
+    #         iter=5000,tol_rel_obj=0.0001,eval_elbo=100)
+    # df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
+    # # print(df)
+    # df.to_csv('result.csv', index=False)
 
-    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=None)
-    # samples = fit.extract(permuted=True)
+    fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=None)
+    samples = fit.extract(permuted=True)
     
-    # with open("result.pkl", "wb") as f:
-    #     pickle.dump(samples, f)
+    with open("result.pkl", "wb") as f:
+        pickle.dump(samples, f)
