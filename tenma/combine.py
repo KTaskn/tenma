@@ -406,39 +406,35 @@ if __name__ == "__main__":
 
     df_tmp = df[mask].reset_index(drop=True)
     df_tmp = pd.concat([
-        df_tmp[df_tmp['kakuteijyuni'].isin(["01", "02", "03"])],
-        df_tmp[-df_tmp['kakuteijyuni'].isin(["01", "02", "03"])].sample((df_tmp['kakuteijyuni'].isin(["01", "02", "03"])).sum())
+        df_tmp[df_tmp['kakuteijyuni'].isin(["01"])],
+        df_tmp[-df_tmp['kakuteijyuni'].isin(["01"])].sample((df_tmp['kakuteijyuni'].isin(["01"])).sum())
     ], ignore_index=True)
 
     data_x = df_tmp[l_col]
-    data_odds = df_tmp['odds'].astype(float) / 10.0
     data_y = (df_tmp['kakuteijyuni'] == "01").astype(int)
+    data_odds = (df_tmp['odds'].astype(float) / 10.0).astype(int)
 
-
-
-    P = float(sys.argv[1])
     data = {
         "N": len(data_x),
         "D": len(l_col),
-        "O": data_odds,
-        "P": P,
         "X": data_x,
         "Y": data_y,
+        "O": data_odds
     }
 
-    # print(data['N'])
+    print(data['N'])
 
     STAN_MODEL_PATH = "stanmodel/combine.stan"
     model = pystan.StanModel(file=STAN_MODEL_PATH)
 
-    # fit_vb = model.vb(data=data, pars=None,
-    #         iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
-    # df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
-    # # print(df)
-    # df.to_csv('result.csv', index=False)
+    fit_vb = model.vb(data=data, pars=None,
+            iter=3000,tol_rel_obj=0.0001,eval_elbo=100)
+    df = pd.read_csv(fit_vb['args']['sample_file'].decode('utf-8'), comment='#')
+    # print(df)
+    df.to_csv('result.csv', index=False)
 
-    fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=None)
-    samples = fit.extract(permuted=True)
+    # fit = model.sampling(data=data, iter=3000, chains=3, thin=1, pars=None)
+    # samples = fit.extract(permuted=True)
     
-    with open("result.pkl", "wb") as f:
-        pickle.dump(samples, f)
+    # with open("result.pkl", "wb") as f:
+    #     pickle.dump(samples, f)
