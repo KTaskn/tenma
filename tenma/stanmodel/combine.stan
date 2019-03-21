@@ -3,7 +3,7 @@ data {
     int N;
     int D;
     real X[N, D];
-    real Y[N];
+    int Y[N];
     real O[N];
     real P;
 }
@@ -12,12 +12,11 @@ parameters {
     real W_1[D];
     real W_2[D];
     real B[D];
+    real s;
     real bias;
 }
 
 model {
-    real a;
-
     bias ~ normal(0, 10);
 
     for(d in 1:D){
@@ -27,11 +26,12 @@ model {
     }
 
     for (n in 1:N){
-        a = bias;
+        real a = bias;
         for(d in 1:D){
             a += X[n, d] * W_1[d];
-            a += (X[n, d] + B[n]) * (X[n, d] + B[n]) * W_2[d];
+            a += (X[n, d] + B[d]) * (X[n, d] + B[d]) * W_2[d];
         }
-        Y[n] ~ bernoulli(inv_logit(normal(a, P / O[n])));
+        s ~  normal(a, log(P) / log(O[n]));
+        Y[n] ~ bernoulli(inv_logit(s));
     }
 }

@@ -301,24 +301,24 @@ def get_score(x):
     
 if __name__ == "__main__":
 
-    df_param = pd.read_csv('result.csv')
-    # with open("result.pkl", "rb") as f:
-    #     params = pickle.load(f)
+    # df_param = pd.read_csv('result.csv')
+    with open("result.pkl", "rb") as f:
+        params = pickle.load(f)
 
-    # df_param = pd.concat([
-    #     pd.DataFrame(params['W_1']),
-    #     pd.DataFrame(params['W_2']),
-    #     pd.DataFrame(params['B']),
-    #     pd.DataFrame(params['s']),
-    #     pd.DataFrame(params['bias'])
-    # ], axis=1)
+    df_param = pd.concat([
+        pd.DataFrame(params['W_1']),
+        pd.DataFrame(params['W_2']),
+        pd.DataFrame(params['B']),
+        pd.DataFrame(params['s']),
+        pd.DataFrame(params['bias'])
+    ], axis=1)
 
-    # df_param.columns = [
-    #     'W_1.1','W_1.2','W_1.3','W_1.4','W_1.5','W_1.6',
-    #     'W_2.1','W_2.2','W_2.3','W_2.4','W_2.5','W_2.6',
-    #     'B.1','B.2','B.3','B.4','B.5','B.6',
-    #     's', 'bias'
-    # ]
+    df_param.columns = [
+        'W_1.1','W_1.2','W_1.3','W_1.4','W_1.5','W_1.6',
+        'W_2.1','W_2.2','W_2.3','W_2.4','W_2.5','W_2.6',
+        'B.1','B.2','B.3','B.4','B.5','B.6',
+        's', 'bias'
+    ]
     print(df_param)
 
     df = pd.merge(
@@ -343,7 +343,7 @@ if __name__ == "__main__":
         on=['kettonum', 'trackcd', 'kyori'],
         how="left"
     ).fillna(0.0)
-    print(df.columns)
+    # print(df.columns)
 
     year = sys.argv[1]
     monthday = sys.argv[2]
@@ -375,7 +375,7 @@ if __name__ == "__main__":
 
 
     df['predict'] = 0.0
-    for i in range(100):
+    for i in range(10):
         df['other'] = np.random.beta(
             df['win_other'] + 0.001,
             df['race_other'] - df['win_other'] + 0.001
@@ -427,11 +427,15 @@ if __name__ == "__main__":
         df['predict'] += (df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False) == 1).astype(int)
     df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['predict'].rank(ascending=False)
 
-    from sklearn.metrics import confusion_matrix
-    print(confusion_matrix(
-        (df['kakuteijyuni'].map(lambda x: x in ["01", "02", "03"])),
-        (df['predict'].map(lambda x: x in (1, 2, 3)))
-    ))
 
-    print((df['predict'] == 1).astype(int).sum())
-    print((((df['kakuteijyuni'] == "01") & (df['predict'] == 1)).astype(int) * df['odds'].astype(float) / 10.0).sum())
+    from sklearn.metrics import confusion_matrix
+
+    for idx, grp in df.groupby(['year', 'monthday']):
+
+        print(confusion_matrix(
+            (grp['kakuteijyuni'].map(lambda x: x in ["01"])),
+            (grp['predict'].map(lambda x: x in (1, 2, 3)))
+        ))
+
+        print((grp['predict'] == 1).astype(int).sum())
+        print((((grp['kakuteijyuni'] == "01") & (grp['predict'] == 1)).astype(int) * grp['odds'].astype(float) / 10.0).sum())
