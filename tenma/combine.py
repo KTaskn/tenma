@@ -13,6 +13,14 @@ import itertools
 from pprint import pprint
 import pickle
 
+
+def zscore(x):
+    v = x.std()
+    if v:
+        return (x - x.mean()) / v
+    else:
+        return 0.0
+
 def load():
     dbparams = "host={} user={} dbname={} port={}".format(
             os.environ['host'],
@@ -261,6 +269,49 @@ def load_titiuma():
             df.to_csv(PATH, index=False)
     return df
 
+def load_harontimel3():
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT
+    n_uma_race.year,
+    n_uma_race.monthday,
+    n_uma_race.jyocd,
+    n_uma_race.racenum,
+    n_race.trackcd,
+    n_race.kyori,
+    n_uma_race.kettonum,
+    n_uma_race.harontimel3
+    FROM n_uma_race
+    INNER JOIN n_race
+    ON n_uma_race.year = n_race.year
+    AND n_uma_race.monthday = n_race.monthday
+    AND n_uma_race.jyocd = n_race.jyocd
+    AND n_uma_race.racenum = n_race.racenum
+    WHERE n_uma_race.year IN ('2017', '2018', '2019')
+    ORDER BY n_uma_race.year,
+    n_uma_race.monthday,
+    n_uma_race.racenum;
+    """
+
+    PATH = "2018_race_harontimel3.csv"
+    if os.path.exists(PATH):
+        df = pd.read_csv(PATH, dtype=str)
+    else:
+        with psycopg2.connect(dbparams) as conn:
+            df = pd.io.sql.read_sql_query(query, conn)
+            df.to_csv(PATH, index=False)
+    df = df.sort_values(['year', 'monthday', 'jyocd', 'racenum', 'kettonum'])
+    df['harontimel3'] = df['harontimel3'].astype(int)
+    df['harontimel3'] = df.groupby(['jyocd', 'trackcd', 'kyori'])['harontimel3'].transform(zscore)
+    df['harontimel3_bf'] = df.groupby(['kettonum'])['harontimel3'].shift(1).fillna(0.0)
+    return df
+
 def smile(x):
     if x <= 1300:
         return "s"
@@ -326,23 +377,28 @@ if __name__ == "__main__":
     df = pd.merge(
         pd.merge(
             pd.merge(
-                load().pipe(lambda df: df.assign(
-                    _month = df['year'] + "-" + df['monthday'].map(lambda x: x[:2])
-                )),
-                load_kisyu().pipe(lambda df: df.assign(
+                pd.merge(
+                    load().pipe(lambda df: df.assign(
+                        _month = df['year'] + "-" + df['monthday'].map(lambda x: x[:2])
+                    )),
+                    load_kisyu().pipe(lambda df: df.assign(
+                        _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
+                    )),
+                    on=['kisyucode', '_month'],
+                    how="left"
+                ),
+                load_chokyo().pipe(lambda df: df.assign(
                     _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
                 )),
-                on=['kisyucode', '_month'],
+                on=['chokyosicode', '_month'],
                 how="left"
             ),
-            load_chokyo().pipe(lambda df: df.assign(
-                _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
-            )),
-            on=['chokyosicode', '_month'],
+            load_titiuma(),
+            on=['kettonum', 'trackcd', 'kyori'],
             how="left"
         ),
-        load_titiuma(),
-        on=['kettonum', 'trackcd', 'kyori'],
+        load_harontimel3(),
+        on=['year', 'monthday', 'jyocd', 'racenum', 'kettonum'],
         how="left"
     ).fillna(0.0)
     print(df.columns)
@@ -356,7 +412,8 @@ if __name__ == "__main__":
         "kyori",
         "kisyu",
         "chokyo",
-        "titiuma"
+        "titiuma",
+        "harontimel3_bf"
     ]
 
     df['other'] = np.random.beta(
@@ -389,14 +446,6 @@ if __name__ == "__main__":
         df['race_titiuma'] - df['win_titiuma'] + 0.001
     )
 
-
-    def zscore(x):
-        v = x.std()
-        if v:
-            return (x - x.mean()) / v
-        else:
-            return 0.0
-
     for col in l_col:
         df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
 
@@ -404,14 +453,18 @@ if __name__ == "__main__":
     mask = (df['year'] == year) & (df['kakuteijyuni'] != '00')
     # mask = mask & (np.random.random(len(df.index)) < 0.1)
 
+    df.to_csv('learn.csv', index=False)
+    print("output")
+
     df_tmp = df[mask].reset_index(drop=True)
     df_tmp = pd.concat([
-        df_tmp[df_tmp['kakuteijyuni'].isin(["01"])],
-        df_tmp[-df_tmp['kakuteijyuni'].isin(["01"])].sample((df_tmp['kakuteijyuni'].isin(["01"])).sum())
+        df_tmp[df_tmp['kakuteijyuni'].isin(["01", "02", "03"])],
+        df_tmp[-df_tmp['kakuteijyuni'].isin(["01", "02", "03"])].sample((df_tmp['kakuteijyuni'].isin(["01", "02", "03"])).sum())
     ], ignore_index=True)
 
     data_x = df_tmp[l_col]
-    data_y = (df_tmp['kakuteijyuni'] == "01").astype(int)
+    # data_y = (df_tmp['kakuteijyuni'] == "01").astype(int)
+    data_y = df_tmp['kakuteijyuni'].isin(["01", "02", "03"]).astype(int)
     data_odds = (df_tmp['odds'].astype(float) / 10.0).astype(int)
 
     data = {

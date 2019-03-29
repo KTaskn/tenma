@@ -13,6 +13,13 @@ import itertools
 from pprint import pprint
 import pickle
 
+
+def zscore(x):
+    if x.std():
+        return (x - x.mean()) / x.std()
+    else:
+        return 0.0
+
 def load():
     dbparams = "host={} user={} dbname={} port={}".format(
             os.environ['host'],
@@ -238,6 +245,49 @@ def load_titiuma():
             df.to_csv(PATH, index=False)
     return df
 
+def load_harontimel3():
+    dbparams = "host={} user={} dbname={} port={}".format(
+            os.environ['host'],
+            os.environ['user'],
+            os.environ['dbname'],
+            os.environ['port'],
+        )
+    
+    query = """
+    SELECT
+    n_uma_race.year,
+    n_uma_race.monthday,
+    n_uma_race.jyocd,
+    n_uma_race.racenum,
+    n_race.trackcd,
+    n_race.kyori,
+    n_uma_race.kettonum,
+    n_uma_race.harontimel3
+    FROM n_uma_race
+    INNER JOIN n_race
+    ON n_uma_race.year = n_race.year
+    AND n_uma_race.monthday = n_race.monthday
+    AND n_uma_race.jyocd = n_race.jyocd
+    AND n_uma_race.racenum = n_race.racenum
+    WHERE n_uma_race.year IN ('2017', '2018', '2019')
+    ORDER BY n_uma_race.year,
+    n_uma_race.monthday,
+    n_uma_race.racenum;
+    """
+
+    PATH = "2018_race_harontimel3.csv"
+    if os.path.exists(PATH):
+        df = pd.read_csv(PATH, dtype=str)
+    else:
+        with psycopg2.connect(dbparams) as conn:
+            df = pd.io.sql.read_sql_query(query, conn)
+            df.to_csv(PATH, index=False)
+    df = df.sort_values(['year', 'monthday', 'jyocd', 'racenum', 'kettonum'])
+    df['harontimel3'] = df['harontimel3'].astype(int)
+    df['harontimel3'] = df.groupby(['jyocd', 'trackcd', 'kyori'])['harontimel3'].transform(zscore)
+    df['harontimel3_bf'] = df.groupby(['kettonum'])['harontimel3'].shift(1).fillna(0.0)
+    return df
+
 def smile(x):
     if x <= 1300:
         return "s"
@@ -311,30 +361,35 @@ if __name__ == "__main__":
     ], axis=1)
 
     df_param.columns = [
-        'W.1','W.2','W.3','W.4','W.5','W.6', 'bias'
+        'W.1','W.2','W.3','W.4','W.5','W.6', 'W.7', 'bias'
     ]
     print(df_param)
 
     df = pd.merge(
         pd.merge(
             pd.merge(
-                load().pipe(lambda df: df.assign(
-                    _month = df['year'] + "-" + df['monthday'].map(lambda x: x[:2])
-                )),
-                load_kisyu().pipe(lambda df: df.assign(
+                pd.merge(
+                    load().pipe(lambda df: df.assign(
+                        _month = df['year'] + "-" + df['monthday'].map(lambda x: x[:2])
+                    )),
+                    load_kisyu().pipe(lambda df: df.assign(
+                        _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
+                    )),
+                    on=['kisyucode', '_month'],
+                    how="left"
+                ),
+                load_chokyo().pipe(lambda df: df.assign(
                     _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
                 )),
-                on=['kisyucode', '_month'],
+                on=['chokyosicode', '_month'],
                 how="left"
             ),
-            load_chokyo().pipe(lambda df: df.assign(
-                _month = df['_month'].map(lambda x: x.strftime('%Y-%m'))
-            )),
-            on=['chokyosicode', '_month'],
+            load_titiuma(),
+            on=['kettonum', 'trackcd', 'kyori'],
             how="left"
         ),
-        load_titiuma(),
-        on=['kettonum', 'trackcd', 'kyori'],
+        load_harontimel3(),
+        on=['year', 'monthday', 'jyocd', 'racenum', 'kettonum'],
         how="left"
     ).fillna(0.0)
     # print(df.columns)
@@ -348,18 +403,13 @@ if __name__ == "__main__":
         "kyori",
         "kisyu",
         "chokyo",
-        "titiuma"
+        "titiuma",
+        "harontimel3_bf"
     ]
 
     mask = (df['year'] == year) & (df['kakuteijyuni'] != '00')
     df = df[mask].reset_index(drop=True)
 
-
-    def zscore(x):
-        if x.std():
-            return (x - x.mean()) / x.std()
-        else:
-            return 0.0
     
     def softplus(x):
         return np.log(1 + np.exp(x))
@@ -369,6 +419,7 @@ if __name__ == "__main__":
 
 
     df_predict = pd.DataFrame([])
+    df['predict'] = 0.0
     for i in range(100):
         df['other'] = np.random.beta(
             df['win_other'] + 0.001,
@@ -400,9 +451,10 @@ if __name__ == "__main__":
             df['race_titiuma'] - df['win_titiuma'] + 0.001
         )
 
+        
         for col in l_col:
             df[col] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])[col].transform(zscore)
-                
+       
         df['score'] = (
             df[l_col[0]] * df_param.ix[i, 'W.1']
             + df[l_col[1]] * df_param.ix[i, 'W.2']
@@ -410,11 +462,29 @@ if __name__ == "__main__":
             + df[l_col[3]] * df_param.ix[i, 'W.4']
             + df[l_col[4]] * df_param.ix[i, 'W.5']
             + df[l_col[5]] * df_param.ix[i, 'W.6']
+            + df[l_col[6]] * df_param.ix[i, 'W.7']
             + df_param.ix[i, 'bias']).map(inv_logit)
-        
-        df_predict = pd.concat([
-            df_predict,
-            df
-        ], ignore_index=True)
 
-    df_predict.to_csv('predict.csv')
+        df['predict'] += (df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['score'].rank(ascending=False) == 1).astype(int)
+    df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['predict'].rank(ascending=False)
+
+        
+    df_predict = pd.concat([
+        df_predict,
+        df
+    ], ignore_index=True)
+    
+    from sklearn.metrics import confusion_matrix
+    print(confusion_matrix(
+        (df['kakuteijyuni'].map(lambda x: x in ["01", "02", "03"])),
+        (df['predict'].map(lambda x: x in (1, 2, 3)))
+    ))
+
+
+    print(confusion_matrix(
+        (df['kakuteijyuni'].map(lambda x: x in ["01"])),
+        (df['predict'].map(lambda x: x == 1))
+    ))
+
+    print((df['predict'] == 1).astype(int).sum())
+    print((((df['kakuteijyuni'] == "01") & (df['predict'] == 1)).astype(int) * df['odds'].astype(float) / 10.0).sum())
