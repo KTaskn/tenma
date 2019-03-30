@@ -1,6 +1,7 @@
 # coding:utf-8
 import sys
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from tenma import dataload
 from tenma import naivebayes as nb
@@ -80,19 +81,46 @@ if __name__ == "__main__":
     df['kakuteijyuni_bf3'] = df.groupby('kettonum')['kakuteijyuni'].shift(3).fillna(-1)
     df['kakuteijyuni_bf4'] = df.groupby('kettonum')['kakuteijyuni'].shift(4).fillna(-1)
 
-    mask = (df['year'] == year) & (df['monthday'] == monthday)
+    for col in l_col:
+        df = pd.merge(
+            df,
+            pd.merge(
+                df[col].value_counts().reset_index().rename(columns={col: "%s_%s" % (col, "cnt_all"), "index": col}),
+                df.pipe(
+                    lambda df: df[df['kakuteijyuni'] == "01"]
+                )[col].value_counts().reset_index().rename(columns={col: "%s_%s" % (col, "cnt_win"), "index": col}),
+                how="left"
+            ).fillna(0)
+        )
 
-    df_output = nb.get_NaiveBayesFactors(df, df[mask].reset_index(), l_col, 1)
-    print('INSERT INTO "public"."t_factor"("year","monthday","jyocd","racenum","kettonum","factor","score") VALUES')
+    
+    df['proba'] = 0
+    for i in range(100):
+        for col in l_col:
+            df[col] = np.random.beta(
+                df["%s_%s" % (col, "cnt_win")].values + 1.0,
+                df["%s_%s" % (col, "cnt_all")].values - df["%s_%s" % (col, "cnt_win")].values + 1.0
+            )
+
+        coef_ = [[3.69165183, 2.49254973, 1.71418378, 1.42961658, 2.02986138, 4.00351792]]
+        intercept_ = [-1.36043099]
+
+        df['proba'] += 1 / (1 + np.exp(-(np.dot(df[l_col].values, coef_[0]) + intercept_[0])))
+    df['predict'] = df.groupby(['year', 'monthday', 'jyocd', 'racenum'])['proba'].rank(ascending=False)
+
+    mask = (df['year'] == year) & (df['monthday'] == monthday)
+    df_output = df[mask].reset_index()
+
+    # # インサート文で出力
+    print('INSERT INTO "public"."t_predict"("year","monthday","jyocd","racenum","kettonum","predict") VALUES')
     for idx, row in df_output.iterrows():
-        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',E'%s',%f)" % (
+        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',%d)" % (
             int(row['year']),
             int(row['monthday']),
             int(row['jyocd']),
             int(row['racenum']),
             row['kettonum'],
-            row['factor'],
-            float(row['score'])
+            int(row['predict'])
         )
         if idx == len(df_output.index) - 1:
             text += ";"
@@ -100,62 +128,42 @@ if __name__ == "__main__":
             text += ","
         print(text)
 
-    df_output = nb.get_NaiveBayesProbability(df, df[mask].reset_index(), l_col, 1)
-    df_output['predict'] = df_output.groupby(['year', 'monthday', 'jyocd', 'racenum'])['odds'].rank(ascending=True)
-
+    # df_output = nb.get_NaiveBayesProbability(df, df[mask].reset_index(), l_col, 2)
     # # インサート文で出力
-    # print('INSERT INTO "public"."t_predict"("year","monthday","jyocd","racenum","kettonum","predict") VALUES')
+    # print('INSERT INTO "public"."t_umatan"("year","monthday","jyocd","racenum","kettonum_1chaku","kettonum_2chaku","odds") VALUES')
     # for idx, row in df_output.iterrows():
-    #     text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',%d)" % (
+    #     text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',E'%s',%.1f)" % (
     #         int(row['year']),
     #         int(row['monthday']),
     #         int(row['jyocd']),
     #         int(row['racenum']),
     #         row['kettonum_1'],
-    #         int(row['predict'])
+    #         row['kettonum_2'],
+    #         float(row['odds'])
     #     )
     #     if idx == len(df_output.index) - 1:
     #         text += ";"
     #     else:
     #         text += ","
     #     print(text)
-
-    df_output = nb.get_NaiveBayesProbability(df, df[mask].reset_index(), l_col, 2)
-    # インサート文で出力
-    print('INSERT INTO "public"."t_umatan"("year","monthday","jyocd","racenum","kettonum_1chaku","kettonum_2chaku","odds") VALUES')
-    for idx, row in df_output.iterrows():
-        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s',E'%s',%.1f)" % (
-            int(row['year']),
-            int(row['monthday']),
-            int(row['jyocd']),
-            int(row['racenum']),
-            row['kettonum_1'],
-            row['kettonum_2'],
-            float(row['odds'])
-        )
-        if idx == len(df_output.index) - 1:
-            text += ";"
-        else:
-            text += ","
-        print(text)
     
-    for idx, row in df[mask].iterrows():
-        text = 'INSERT INTO "public"."t_name" ("kettonum","bamei")'
-        text += 'SELECT E\'%s\', E\'%s\' WHERE NOT EXISTS (SELECT "kettonum" FROM "public"."t_name" WHERE "kettonum" = E\'%s\');'
-        print(text % (row['kettonum'], row['bamei'], row['kettonum']))
+    # for idx, row in df[mask].iterrows():
+    #     text = 'INSERT INTO "public"."t_name" ("kettonum","bamei")'
+    #     text += 'SELECT E\'%s\', E\'%s\' WHERE NOT EXISTS (SELECT "kettonum" FROM "public"."t_name" WHERE "kettonum" = E\'%s\');'
+    #     print(text % (row['kettonum'], row['bamei'], row['kettonum']))
 
-    df_output = dataload.load_racename(year, monthday)
-    print('INSERT INTO "public"."t_racename"("year","monthday","jyocd","racenum","racename") VALUES')
-    for idx, row in df_output.iterrows():
-        text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s')" % (
-            int(row['year']),
-            int(row['monthday']),
-            int(row['jyocd']),
-            int(row['racenum']),
-            row['ryakusyo10'],
-        )
-        if idx == len(df_output.index) - 1:
-            text += ";"
-        else:
-            text += ","
-        print(text)
+    # df_output = dataload.load_racename(year, monthday)
+    # print('INSERT INTO "public"."t_racename"("year","monthday","jyocd","racenum","racename") VALUES')
+    # for idx, row in df_output.iterrows():
+    #     text = "(E'%04d',E'%04d',E'%d',E'%d',E'%s')" % (
+    #         int(row['year']),
+    #         int(row['monthday']),
+    #         int(row['jyocd']),
+    #         int(row['racenum']),
+    #         row['ryakusyo10'],
+    #     )
+    #     if idx == len(df_output.index) - 1:
+    #         text += ";"
+    #     else:
+    #         text += ","
+    #     print(text)
