@@ -22,11 +22,12 @@ def zscore(x):
         return 0.0
 
 def load():
-    dbparams = "host={} user={} dbname={} port={}".format(
+    dbparams = "host={} user={} dbname={} port={} password={}".format(
             os.environ['host'],
             os.environ['user'],
             os.environ['dbname'],
             os.environ['port'],
+            os.environ['password'],
         )
     
     query = """
@@ -147,11 +148,12 @@ def load():
     return df
 
 def load_kisyu():
-    dbparams = "host={} user={} dbname={} port={}".format(
+    dbparams = "host={} user={} dbname={} port={} password={}".format(
             os.environ['host'],
             os.environ['user'],
             os.environ['dbname'],
             os.environ['port'],
+            os.environ['password'],
         )
     
     query = """
@@ -187,11 +189,12 @@ def load_kisyu():
     return df
 
 def load_chokyo():
-    dbparams = "host={} user={} dbname={} port={}".format(
+    dbparams = "host={} user={} dbname={} port={} password={}".format(
             os.environ['host'],
             os.environ['user'],
             os.environ['dbname'],
             os.environ['port'],
+            os.environ['password'],
         )
     
     query = """
@@ -228,11 +231,12 @@ def load_chokyo():
 
 
 def load_titiuma():
-    dbparams = "host={} user={} dbname={} port={}".format(
+    dbparams = "host={} user={} dbname={} port={} password={}".format(
             os.environ['host'],
             os.environ['user'],
             os.environ['dbname'],
             os.environ['port'],
+            os.environ['password'],
         )
     
     query = """
@@ -270,11 +274,12 @@ def load_titiuma():
     return df
 
 def load_harontimel3():
-    dbparams = "host={} user={} dbname={} port={}".format(
+    dbparams = "host={} user={} dbname={} port={} password={}".format(
             os.environ['host'],
             os.environ['user'],
             os.environ['dbname'],
             os.environ['port'],
+            os.environ['password'],
         )
     
     query = """

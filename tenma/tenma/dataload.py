@@ -31,11 +31,12 @@ def jyokencd(x):
     return 4
 
 def load():
-    dbparams = "host={} user={} dbname={} port={}".format(
+    dbparams = "host={} user={} dbname={} port={} password={}".format(
             os.environ['host'],
             os.environ['user'],
             os.environ['dbname'],
             os.environ['port'],
+            os.environ['password'],
         )
     
     query = """
@@ -75,11 +76,12 @@ def load():
     return df
 
 def load_racename(year, monthday):
-    dbparams = "host={} user={} dbname={} port={}".format(
+    dbparams = "host={} user={} dbname={} port={} password={}".format(
             os.environ['host'],
             os.environ['user'],
             os.environ['dbname'],
             os.environ['port'],
+            os.environ['password'],
         )
     
     query = """
